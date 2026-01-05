@@ -1,7 +1,8 @@
 import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import useSWR from 'swr';
 import { useApp } from '@/context/AppContext';
+import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { fetchUserSession } from '@/lib/squirrels-api';
 import type { UserSessionResponse } from '@/types/AuthResponses';
 import { PROTECTED_PATHS } from '@/context/AppContext';
@@ -23,11 +24,10 @@ export const SessionTimeoutHandler: React.FC = () => {
     sessionExpiry,
     setRegisteredSession,
     isSessionExpiredModalOpen, 
-    setIsSessionExpiredModalOpen,
-    hostUrl
+    setIsSessionExpiredModalOpen
   } = useApp();
   const location = useLocation();
-  const navigate = useNavigate();
+  const appNavigate = useAppNavigate();
 
   const isProtectedPath = PROTECTED_PATHS.some(path => location.pathname === path);
   
@@ -51,11 +51,7 @@ export const SessionTimeoutHandler: React.FC = () => {
 
   const handleCloseModal = () => {
     setIsSessionExpiredModalOpen(false);
-    if (hostUrl) {
-      navigate(`/login?hostUrl=${encodeURIComponent(hostUrl)}`);
-    } else {
-      navigate('/');
-    }
+    appNavigate('/login');
   };
 
   return (

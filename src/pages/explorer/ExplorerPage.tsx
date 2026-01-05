@@ -1,8 +1,9 @@
 import { useState, useMemo, useCallback, type FC } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { ChevronDown, TableIcon, Download, LayoutDashboardIcon, Info, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import useSWR from 'swr';
 import { useApp } from '@/context/AppContext';
+import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -39,7 +40,7 @@ import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
 const ExplorerPage: FC = () => {
-  const navigate = useNavigate();
+  const appNavigate = useAppNavigate();
   const { hostUrl, projectMetadata, userProps, setGuestSession, isLoading, setIsLoading } = useApp();
 
   const handleLogout = async () => {
@@ -52,11 +53,7 @@ const ExplorerPage: FC = () => {
     }
 
     setGuestSession();
-    if (hostUrl) {
-      navigate(`/login?hostUrl=${encodeURIComponent(hostUrl)}`);
-    } else {
-      navigate('/');
-    }
+    appNavigate('/login');
   };
 
   const [exploreType, setExploreType] = useState<'Datasets' | 'Dashboards'>('Datasets');
@@ -261,7 +258,6 @@ const ExplorerPage: FC = () => {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col h-screen overflow-hidden">
       <Header 
-        hostUrl={hostUrl}
         projectLabel={projectMetadata?.label || ''} 
         projectVersion={projectMetadata?.version || ''} 
         username={userProps?.username || null} 

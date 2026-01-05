@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { LogIn, FileText, ExternalLink, Copy, User, Lock, Globe, ArrowRight, Pencil, CheckCircle2, AlertCircle } from 'lucide-react';
 import useSWR from 'swr';
 import { ModeToggle } from '@/components/mode-toggle';
 import { useApp } from '@/context/AppContext';
+import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
 import { GlowCard } from '@/components/glow-card';
 import { fetchAuthProviders, login, logout, ApiError } from '@/lib/squirrels-api';
@@ -23,8 +24,11 @@ import {
 } from "@/components/ui/tooltip";
 
 const LoginPage: React.FC = () => {
-  const navigate = useNavigate();
-  const { hostUrl, projectMetadata, exploreEndpoints, setRegisteredSession, setGuestSession, setIsLoading } = useApp();
+  const appNavigate = useAppNavigate();
+  const { 
+    hostUrl, isHostUrlInQuery, projectMetadata, exploreEndpoints, setHostUrl, setProjectMetadata, setExploreEndpoints, 
+    setRegisteredSession, setGuestSession, setIsLoading 
+  } = useApp();
   const [activeTab, setActiveTab] = useState<'signin' | 'docs'>('signin');
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('');
@@ -51,7 +55,7 @@ const LoginPage: React.FC = () => {
       const userData = await login(projectMetadata.api_routes.login_url, formData);
       setRegisteredSession(userData.user, userData.session_expiry_timestamp);
       
-      navigate(`/explorer?hostUrl=${encodeURIComponent(hostUrl)}`);
+      appNavigate('/explorer');
     } catch (error) {
       console.error(error);
       if (error instanceof ApiError) {
@@ -76,7 +80,7 @@ const LoginPage: React.FC = () => {
     }
 
     setGuestSession();
-    navigate(`/explorer?hostUrl=${encodeURIComponent(hostUrl)}`);
+    appNavigate('/explorer');
   };
 
   const copyMcpUrl = () => {
@@ -87,7 +91,11 @@ const LoginPage: React.FC = () => {
 
   const getRedirectUrl = () => {
     const url = new URL(window.location.origin + window.location.pathname);
-    url.hash = `#/explorer?hostUrl=${encodeURIComponent(hostUrl || '')}`;
+    if (isHostUrlInQuery) {
+      url.hash = `#/explorer?hostUrl=${encodeURIComponent(hostUrl || '')}`;
+    } else {
+      url.hash = '#/explorer';
+    }
     return url.toString();
   };
 
@@ -136,7 +144,14 @@ const LoginPage: React.FC = () => {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={() => {
+                    appNavigate('/');
+
+                    // Avoid auto-connecting by setting the host URL to null
+                    setHostUrl(null);
+                    setProjectMetadata(null);
+                    setExploreEndpoints(null);
+                  }}
                   className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   aria-label="Edit connection settings"
                 >

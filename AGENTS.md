@@ -48,16 +48,7 @@ src/
 3. **React Router hooks** - For navigation and URL-based state
 4. **Component composition** - Passing callbacks and state through props
 
-**When `useEffect` IS acceptable:**
-- Setting up subscriptions that require cleanup (e.g., WebSocket connections)
-- Integrating with third-party libraries that require imperative APIs
-- Synchronizing with browser APIs that don't have React-friendly alternatives
-
-**When `useEffect` should be AVOIDED:**
-- Data fetching (use SWR instead)
-- Updating state based on props (use derived state or callbacks)
-- Side effects triggered by user actions (use event handlers)
-- Initialization logic (use component initialization or SWR)
+If you absolutely need to use `useEffect`, please explain why there is no alternative.
 
 ### Routing
 

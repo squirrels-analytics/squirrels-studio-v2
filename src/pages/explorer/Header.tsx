@@ -1,7 +1,7 @@
 import { type FC } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Settings, User, LogOut, Database as DbIcon } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
+import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,7 +15,6 @@ import {
 import { Input } from '@/components/ui/input';
 
 interface HeaderProps {
-  hostUrl: string;
   projectLabel: string;
   projectVersion: string;
   username: string | null;
@@ -26,7 +25,6 @@ interface HeaderProps {
 }
 
 export const Header: FC<HeaderProps> = ({
-  hostUrl,
   projectLabel,
   projectVersion,
   username,
@@ -35,7 +33,7 @@ export const Header: FC<HeaderProps> = ({
   pageSize,
   onPageSizeChange
 }) => {
-  const navigate = useNavigate();
+  const appNavigate = useAppNavigate();
   const isGuest = !username || username === 'guest';
   const isAdmin = accessLevel === 'admin';
 
@@ -96,13 +94,13 @@ export const Header: FC<HeaderProps> = ({
                   <DropdownMenuLabel>Navigation</DropdownMenuLabel>
                   <DropdownMenuGroup>
                     {!isGuest && (
-                      <DropdownMenuItem onClick={() => navigate(`/user-settings?hostUrl=${encodeURIComponent(hostUrl)}`)}>
+                      <DropdownMenuItem onClick={() => appNavigate('/user-settings')}>
                         <User className="mr-2 h-4 w-4" />
                         <span>User Settings</span>
                       </DropdownMenuItem>
                     )}
                     {isAdmin && (
-                      <DropdownMenuItem onClick={() => navigate(`/manage-users?hostUrl=${encodeURIComponent(hostUrl)}`)}>
+                      <DropdownMenuItem onClick={() => appNavigate('/manage-users')}>
                         <Settings className="mr-2 h-4 w-4" />
                         <span>Manage Users</span>
                       </DropdownMenuItem>

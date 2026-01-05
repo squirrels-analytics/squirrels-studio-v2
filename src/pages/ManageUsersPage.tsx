@@ -1,5 +1,4 @@
 import { type FC, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   UserPlus, 
@@ -9,6 +8,7 @@ import {
 } from 'lucide-react';
 import useSWR, { useSWRConfig } from 'swr';
 import { ModeToggle } from '@/components/mode-toggle';
+import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,8 +32,8 @@ import type { RegisteredUser } from '@/types/UserFieldsResponse';
 import NotFoundPage from './NotFoundPage';
 
 const ManageUsersPage: FC = () => {
-  const navigate = useNavigate();
-  const { hostUrl, projectMetadata, userProps, isSessionExpiredModalOpen } = useApp();
+  const appNavigate = useAppNavigate();
+  const { projectMetadata, userProps, isSessionExpiredModalOpen } = useApp();
   const { mutate } = useSWRConfig();
   
   const { data: userFieldsResponse } = useSWR(
@@ -197,7 +197,7 @@ const ManageUsersPage: FC = () => {
       <header className="h-16 bg-background border-b border-border flex items-center justify-between px-4 sticky top-0 z-30 shadow-sm">
         <h1 className="text-xl font-bold text-foreground">User Management</h1>
         <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => navigate(`/explorer?hostUrl=${encodeURIComponent(hostUrl || '')}`)} className="gap-2">
+          <Button variant="outline" onClick={() => appNavigate('/explorer')} className="gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Explorer
           </Button>

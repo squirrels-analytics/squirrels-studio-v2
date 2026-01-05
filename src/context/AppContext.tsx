@@ -7,6 +7,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { ProjectMetadataResponse } from '@/types/ProjectMetadataResponse';
 import type { UserInfo } from '@/types/AuthResponses';
 import type { ExploreEndpointsResponse } from '@/types/ExploreEndpointsResponse';
@@ -47,6 +48,7 @@ export const PROTECTED_PATHS = ['/explorer', '/user-settings', '/manage-users'];
 
 interface AppContextType {
   hostUrl: string | null;
+  isHostUrlInQuery: boolean;
   setHostUrl: (url: string | null) => void;
   userProps: UserInfo | null;
   sessionExpiry: number | null;
@@ -65,6 +67,9 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [searchParams] = useSearchParams();
+  const isHostUrlInQuery = searchParams.has('hostUrl');
+
   const [hostUrl, setHostUrl] = useState<string | null>(() => {
     // Initialize from URL params if available
     const searchParams = new URLSearchParams(window.location.hash.split('?')[1]);
@@ -127,6 +132,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const value = useMemo(() => ({
     hostUrl,
+    isHostUrlInQuery,
     setHostUrl,
     userProps,
     sessionExpiry,
@@ -142,6 +148,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setIsSessionExpiredModalOpen
   }), [
     hostUrl,
+    isHostUrlInQuery,
     userProps,
     sessionExpiry,
     setRegisteredSession,

@@ -1,73 +1,25 @@
-# React + TypeScript + Vite
+# Squirrels Studio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This project is the source code for Squirrels Studio. It is built using NodeJS, Typescript, Vite, and React.
 
-Currently, two official plugins are available:
+## License
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Squirrels Studio is released under the Apache License 2.0.
 
-## React Compiler
+See the file LICENSE for more details.
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+## Contributing 
 
-## Expanding the ESLint configuration
+The sections below decribe how to set up your local environment for development of this project.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Setup
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+Install NodeJS v24.12.0 or higher. Then run `pnpm install` on this project.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+Run `pnpm dev` in this project to activate the client. This will start Squirrels Studio at http://localhost:5173/.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+For testing, we recommend using an existing Squirrels project, and run its API server (by running "sqrl run" in the project). 
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+In the Squirrels project, add "http://localhost:5173" to the environment variable "SQRL_AUTH__ALLOWED_ORIGINS_FOR_COOKIES". This environment variable is a comma-separated list of domains that can use cookies for authentication.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Then, in Squirrels Studio (at http://localhost:5173/), enter the host domain and mounted path of the Squirrels project, and click "Connect". This will navigate to the login page.

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { Database, ArrowRight, AlertCircle } from 'lucide-react';
+import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { ModeToggle } from '@/components/mode-toggle';
 import { GlowCard } from '@/components/glow-card';
@@ -10,10 +11,22 @@ import type { ProjectMetadataResponse } from '@/types/ProjectMetadataResponse';
 
 const ConnectPage: React.FC = () => {
   const navigate = useNavigate();
-  const { setHostUrl, setIsLoading, setProjectMetadata, setExploreEndpoints } = useApp();
-  const [hostDomain, setHostDomain] = useState('');
-  const [mountedPath, setMountedPath] = useState('');
+  const { hostUrl, isHostUrlInQuery, setHostUrl, setIsLoading, setProjectMetadata, setExploreEndpoints } = useApp();
+
+  const [hostDomain, setHostDomain] = useState("");
+  const [mountedPath, setMountedPath] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isManuallyConnecting, setIsManuallyConnecting] = useState(false);
+
+  // Auto-connect if hostUrl is already present (e.g., from URL params or DEFAULT_HOSTURL)
+  const { data: autoData } = useSWR<ProjectMetadataResponse>(
+    hostUrl ? hostUrl : null,
+    (url: string) => fetchProjectMetadata(url, setIsLoading, setProjectMetadata, setExploreEndpoints),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    }
+  );
 
   const { trigger } = useSWRMutation<ProjectMetadataResponse, Error, string, string>(
     'project-metadata',
@@ -25,11 +38,11 @@ const ConnectPage: React.FC = () => {
     setError(null);
     // Combine hostDomain and mountedPath into full URL
     const trimmedHostDomain = hostDomain.trim().replace(/\/+$/, '');
-    const hostUrl = `${trimmedHostDomain}${mountedPath.trim()}`;
+    const connectionHostUrl = `${trimmedHostDomain}${mountedPath.trim()}`;
 
     let url: URL;
     try {
-      url = new URL(hostUrl);
+      url = new URL(connectionHostUrl);
     } catch (error) {
       console.error(error);
       setError('Invalid URL. Please check your host domain and mounted path.');
@@ -37,6 +50,7 @@ const ConnectPage: React.FC = () => {
     }
 
     try {
+      setIsManuallyConnecting(true);
       // Query the project metadata using SWR mutation
       const data = await trigger(url.toString());
       
@@ -46,6 +60,7 @@ const ConnectPage: React.FC = () => {
       setHostUrl(finalHostUrl);
       navigate(`/login?hostUrl=${encodeURIComponent(finalHostUrl)}`);
     } catch (error) {
+      setIsManuallyConnecting(false);
       console.error(error);
       // If it's an ApiError, show its message, otherwise show a generic connection error
       if (error instanceof ApiError) {
@@ -55,6 +70,11 @@ const ConnectPage: React.FC = () => {
       }
     }
   };
+
+  if (autoData && !isManuallyConnecting) {
+    const to = isHostUrlInQuery ? `/login?hostUrl=${encodeURIComponent(hostUrl!)}` : '/login';
+    return <Navigate to={to} replace />;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
@@ -89,7 +109,7 @@ const ConnectPage: React.FC = () => {
                 value={hostDomain}
                 onChange={(e) => setHostDomain(e.target.value)}
                 className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-foreground"
-                placeholder="e.g. http://localhost:4465"
+                placeholder="e.g. http://localhost:8000"
                 required
               />
             </div>

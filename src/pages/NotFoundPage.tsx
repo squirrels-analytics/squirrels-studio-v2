@@ -1,20 +1,14 @@
 import { type FC } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FileQuestion, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ModeToggle } from '@/components/mode-toggle';
-import { useApp } from '@/context/AppContext';
+import { useAppNavigate } from '@/hooks/useAppNavigate';
 
 const NotFoundPage: FC = () => {
-  const navigate = useNavigate();
-  const { hostUrl } = useApp();
+  const appNavigate = useAppNavigate();
 
   const handleBack = () => {
-    if (hostUrl) {
-      navigate(`/login?hostUrl=${encodeURIComponent(hostUrl)}`);
-    } else {
-      navigate('/');
-    }
+    appNavigate('/login');
   };
 
   return (
