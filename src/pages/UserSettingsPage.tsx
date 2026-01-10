@@ -42,7 +42,9 @@ const UserSettingsPage: FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
   const { data: apiKeys = [], isLoading: isLoadingKeys } = useSWR(
-    projectMetadata?.api_routes.list_api_keys_url ? [projectMetadata.api_routes.list_api_keys_url] : null,
+    projectMetadata?.api_routes.list_api_keys_url && userProps && !isSessionExpiredModalOpen
+      ? [projectMetadata.api_routes.list_api_keys_url, userProps.username] 
+      : null,
     ([url]) => fetchApiKeys(url)
   );
 
@@ -149,7 +151,7 @@ const UserSettingsPage: FC = () => {
       setApiKeyDesc('');
       
       // Refresh the list
-      mutate([projectMetadata.api_routes.list_api_keys_url]);
+      mutate([projectMetadata.api_routes.list_api_keys_url, userProps?.username]);
     } catch (error) {
       const message = error instanceof ApiError ? error.message : 'Failed to create API key';
       setApiKeyError(message);
@@ -170,7 +172,7 @@ const UserSettingsPage: FC = () => {
     const url = projectMetadata.api_routes.revoke_api_key_url.replace('{key_id}', keyToDelete);
     try {
       await revokeApiKey(url);
-      mutate([projectMetadata.api_routes.list_api_keys_url]);
+      mutate([projectMetadata.api_routes.list_api_keys_url, userProps?.username]);
     } catch (error) {
       console.error('Failed to revoke API key:', error);
     } finally {

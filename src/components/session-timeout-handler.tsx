@@ -21,8 +21,9 @@ export const SessionTimeoutHandler: React.FC = () => {
   const { 
     projectMetadata, 
     userProps, 
-    sessionExpiry,
+    isGuest,
     setRegisteredSession,
+    setGuestSession,
     isSessionExpiredModalOpen, 
     setIsSessionExpiredModalOpen
   } = useApp();
@@ -33,8 +34,9 @@ export const SessionTimeoutHandler: React.FC = () => {
   
   // If we're on a protected path but don't have session info (e.g. page refresh),
   // we need to fetch it to restore the session or confirm we are still logged in.
-  // We only fetch if we have projectMetadata (to get the URL) and missing session data.
-  const shouldFetchSession = !!projectMetadata && (userProps === null || sessionExpiry === null) && isProtectedPath;
+  // We only fetch if we have projectMetadata (to get the URL), missing session data,
+  // and haven't explicitly been marked as a guest.
+  const shouldFetchSession = !!projectMetadata && (userProps === null && !isGuest) && isProtectedPath;
 
   useSWR<UserSessionResponse>(
     shouldFetchSession ? projectMetadata!.api_routes.get_user_session_url : null,
@@ -45,6 +47,11 @@ export const SessionTimeoutHandler: React.FC = () => {
       shouldRetryOnError: false,
       onSuccess: (sessionInfo) => {
         setRegisteredSession(sessionInfo.user, sessionInfo.session_expiry_timestamp);
+      },
+      onError: () => {
+        // If the session check fails (e.g. 401), treat the user as a guest
+        // so we don't keep trying to fetch the session.
+        setGuestSession();
       },
     }
   );

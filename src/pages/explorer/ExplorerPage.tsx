@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/tooltip';
 import { downloadCsv } from '@/lib/utils';
 import { fetchDataCatalog, fetchAssetParameters, fetchAssetResults, logout, type SelectionValue } from '@/lib/squirrels-api';
+import NotFoundPage from '../NotFoundPage';
 import type {
   DataCatalogResponse,
   AnyParameterModel,
@@ -41,9 +42,20 @@ import { Sidebar } from './Sidebar';
 
 const ExplorerPage: FC = () => {
   const appNavigate = useAppNavigate();
-  const { hostUrl, projectMetadata, userProps, setGuestSession, isLoading, setIsLoading } = useApp();
+  const { 
+    hostUrl, 
+    projectMetadata, 
+    userProps, 
+    setGuestSession, 
+    isLoading, 
+    setIsLoading,
+    isSessionExpiredModalOpen
+  } = useApp();
+
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     if (projectMetadata) {
       try {
         await logout(projectMetadata.api_routes.logout_url);
@@ -70,8 +82,10 @@ const ExplorerPage: FC = () => {
 
   // Fetch Data Catalog
   const { data: catalog } = useSWR<DataCatalogResponse>(
-    projectMetadata ? projectMetadata.api_routes.get_data_catalog_url : null,
-    () => fetchDataCatalog(projectMetadata!.api_routes.get_data_catalog_url)
+    projectMetadata && !isLoggingOut && !isSessionExpiredModalOpen 
+      ? [projectMetadata.api_routes.get_data_catalog_url, userProps?.username] 
+      : null,
+    ([url]) => fetchDataCatalog(url)
   );
 
   const datasets = catalog?.datasets ?? [];
@@ -91,8 +105,8 @@ const ExplorerPage: FC = () => {
   }, [exploreType, activeAssetName, datasets, dashboards]);
 
   // Fetch Parameters for Active Asset
-  const paramKey = projectMetadata && activeAssetName
-    ? [projectMetadata, exploreType, activeAssetName, 'params']
+  const paramKey = projectMetadata && activeAssetName && !isLoggingOut && !isSessionExpiredModalOpen
+    ? [projectMetadata, exploreType, activeAssetName, userProps?.username, 'params']
     : null;
 
   const { data: paramsData, mutate: mutateParams } = useSWR<ParametersResponse>(
@@ -253,6 +267,10 @@ const ExplorerPage: FC = () => {
 
   if (!hostUrl) {
     return <Navigate to="/" replace />;
+  }
+
+  if (projectMetadata?.auth_type === 'required' && !userProps && !isSessionExpiredModalOpen) {
+    return <NotFoundPage />;
   }
   
   return (

@@ -282,13 +282,15 @@ const LoginPage: React.FC = () => {
                 </div>
               )}
               
-              <button
-                onClick={handleGuestLogin}
-                className="cursor-pointer w-full bg-secondary hover:bg-secondary/80 active:scale-[0.98] text-foreground font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 border border-border shadow-sm"
-              >
-                <Globe className="w-4 h-4" />
-                Explore as guest
-              </button>
+              {projectMetadata?.auth_type !== 'required' && (
+                <button
+                  onClick={handleGuestLogin}
+                  className="cursor-pointer w-full bg-secondary hover:bg-secondary/80 active:scale-[0.98] text-foreground font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 border border-border shadow-sm"
+                >
+                  <Globe className="w-4 h-4" />
+                  Explore as guest
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

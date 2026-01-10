@@ -37,12 +37,16 @@ const ManageUsersPage: FC = () => {
   const { mutate } = useSWRConfig();
   
   const { data: userFieldsResponse } = useSWR(
-    projectMetadata?.api_routes.list_user_fields_url ? [projectMetadata.api_routes.list_user_fields_url] : null,
+    projectMetadata?.api_routes.list_user_fields_url && userProps && !isSessionExpiredModalOpen
+      ? [projectMetadata.api_routes.list_user_fields_url, userProps.username] 
+      : null,
     ([url]) => fetchUserFields(url)
   );
 
   const { data: users = [], isLoading: isLoadingUsers } = useSWR(
-    projectMetadata?.api_routes.list_users_url ? [projectMetadata.api_routes.list_users_url] : null,
+    projectMetadata?.api_routes.list_users_url && userProps && !isSessionExpiredModalOpen
+      ? [projectMetadata.api_routes.list_users_url, userProps.username] 
+      : null,
     ([url]) => fetchUsers(url)
   );
 
@@ -134,7 +138,7 @@ const ManageUsersPage: FC = () => {
       setIsCreateDialogOpen(false);
       setNewUsername('');
       setNewPassword('');
-      mutate([projectMetadata.api_routes.list_users_url]);
+      mutate([projectMetadata.api_routes.list_users_url, userProps?.username]);
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : 'Failed to create user');
     } finally {
@@ -154,7 +158,7 @@ const ManageUsersPage: FC = () => {
         custom_fields: customFields,
       });
       setIsEditDialogOpen(false);
-      mutate([projectMetadata.api_routes.list_users_url]);
+      mutate([projectMetadata.api_routes.list_users_url, userProps?.username]);
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : 'Failed to update user');
     } finally {
@@ -175,7 +179,7 @@ const ManageUsersPage: FC = () => {
       const url = projectMetadata.api_routes.delete_user_url.replace('{username}', selectedUser.username);
       await deleteUser(url);
       setIsDeleteDialogOpen(false);
-      mutate([projectMetadata.api_routes.list_users_url]);
+      mutate([projectMetadata.api_routes.list_users_url, userProps?.username]);
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : 'Failed to delete user');
     } finally {

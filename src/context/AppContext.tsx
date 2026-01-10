@@ -51,6 +51,7 @@ interface AppContextType {
   isHostUrlInQuery: boolean;
   setHostUrl: (url: string | null) => void;
   userProps: UserInfo | null;
+  isGuest: boolean;
   sessionExpiry: number | null;
   setRegisteredSession: (user: UserInfo, sessionExpiryTimestamp: number) => void;
   setGuestSession: () => void;
@@ -77,6 +78,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   });
   
   const [userProps, setUserProps] = useState<UserInfo | null>(null);
+  const [isGuest, setIsGuest] = useState<boolean>(false);
   const [sessionExpiry, setSessionExpiry] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [projectMetadata, setProjectMetadata] = useState<ProjectMetadataResponse | null>(null);
@@ -95,6 +97,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const setGuestSession = useCallback(() => {
     clearSessionTimeout();
     setUserProps(null);
+    setIsGuest(true);
     setSessionExpiry(null);
     setIsSessionExpiredModalOpen(false);
   }, [clearSessionTimeout]);
@@ -103,6 +106,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     clearSessionTimeout();
     setIsSessionExpiredModalOpen(false);
     setUserProps(user);
+    setIsGuest(false);
     setSessionExpiry(sessionExpiryTimestamp);
 
     const remainingMs = sessionExpiryTimestamp * 1000 - Date.now();
@@ -135,6 +139,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     isHostUrlInQuery,
     setHostUrl,
     userProps,
+    isGuest,
     sessionExpiry,
     setRegisteredSession,
     setGuestSession,
@@ -150,6 +155,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     hostUrl,
     isHostUrlInQuery,
     userProps,
+    isGuest,
     sessionExpiry,
     setRegisteredSession,
     setGuestSession,
