@@ -14,7 +14,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  base: '/squirrels-studio-v2/',
+  // Use a relative base so the built app can be hosted from any path (including GitHub Pages)
+  // without having to hardcode the repository name.
+  base: './',
   build: {
     rollupOptions: {
       output: {
@@ -29,5 +31,6 @@ export default defineConfig({
         },
       },
     },
+    chunkSizeWarningLimit: 750,
   },
 })

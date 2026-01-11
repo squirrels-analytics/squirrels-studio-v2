@@ -1,16 +1,12 @@
-import { useState, useMemo, useCallback, lazy, Suspense, type FC } from 'react';
+import { useState, useMemo, useCallback, lazy, Suspense, type FC, useRef } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ChevronDown, TableIcon, Download, LayoutDashboardIcon, Info, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from 'lucide-react';
+import { TableIcon, LayoutDashboardIcon, Info, Loader2 } from 'lucide-react';
 import useSWR from 'swr';
 import { useApp } from '@/context/AppContext';
 import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { ExportCsvButton } from '@/components/ExportCsvButton';
+import { PaginationContainer } from '@/components/pagination-container';
 import {
   Dialog,
   DialogContent,
@@ -25,7 +21,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { downloadCsv } from '@/lib/utils';
 import { fetchDataCatalog, fetchAssetParameters, fetchAssetResults, fetchProjectParameters, logout, type SelectionValue } from '@/lib/squirrels-api';
 import NotFoundPage from '../NotFoundPage';
 import { SqlPlayground } from './SqlPlayground';
@@ -85,6 +80,7 @@ const ExplorerPage: FC = () => {
   const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(1000);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Fetch Data Catalog
   const { data: catalog } = useSWR<DataCatalogResponse>(
@@ -188,6 +184,9 @@ const ExplorerPage: FC = () => {
         setDatasetResult(result as DatasetResultResponse);
         setDashboardResult(null);
         setCurrentPage(page);
+        if (tableContainerRef.current) {
+          tableContainerRef.current.scrollTop = 0;
+        }
       } else {
         setDatasetResult(null);
         if (result instanceof Blob) {
@@ -242,39 +241,23 @@ const ExplorerPage: FC = () => {
     return null;
   }, [exploreType, activeAsset]);
 
-  const handleExportCurrentRows = () => {
-    const startRow = (currentPage - 1) * pageSize + 1;
-    const endRow = (currentPage - 1) * pageSize + currentRows.length;
-    const csvName = `${(activeAssetName || 'dataset')}-rows-${startRow}-to-${endRow}.csv`;
-    downloadCsv(currentRows, csvName, columns.map(c => c.name));
-  };
-
-  const handleExportAllRows = async () => {
-    if (!projectMetadata || !activeAssetName || !datasetResult) return;
+  const handleFetchAllRows = async () => {
+    if (!projectMetadata || !activeAssetName || !datasetResult) {
+      throw new Error('Missing required data for export');
+    }
     
-    setIsLoading(true);
-    try {
-      const result = await fetchAssetResults(
-        projectMetadata,
-        exploreType,
-        activeAssetName,
-        appliedParamOverrides,
-        { offset: 0, limit: datasetResult.total_num_rows }
-      );
-      
-      if (typeof result === 'object' && result !== null && 'data' in result) {
-        const data = (result as DatasetResultResponse).data;
-        const csvName = `${(activeAssetName || 'dataset')}-all.csv`;
-        downloadCsv(data, csvName, columns.map(c => c.name));
-      } else {
-        throw new Error('Unexpected response format from server');
-      }
-    } catch (err) {
-      console.error('Failed to export all rows:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred while exporting data');
-      setIsErrorModalOpen(true);
-    } finally {
-      setIsLoading(false);
+    const result = await fetchAssetResults(
+      projectMetadata,
+      exploreType,
+      activeAssetName,
+      appliedParamOverrides,
+      { offset: 0, limit: datasetResult.total_num_rows }
+    );
+    
+    if (typeof result === 'object' && result !== null && 'data' in result) {
+      return (result as DatasetResultResponse).data;
+    } else {
+      throw new Error('Unexpected response format from server');
     }
   };
 
@@ -402,28 +385,24 @@ const ExplorerPage: FC = () => {
                 </h3>
                 {exploreType === 'Datasets' && (
                   <div className="flex gap-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="secondary" size="sm" className="gap-2">
-                          <Download className="w-3.5 h-3.5" />
-                          Export CSV
-                          <ChevronDown className="w-3.5 h-3.5 opacity-50" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <DropdownMenuItem onClick={handleExportCurrentRows}>
-                          Export current rows
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleExportAllRows}>
-                          Export all rows
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <ExportCsvButton
+                      filenamePrefix={activeAssetName || 'dataset'}
+                      columns={columns}
+                      currentRows={currentRows}
+                      pageSize={pageSize}
+                      currentPage={currentPage}
+                      onFetchAll={handleFetchAllRows}
+                      onLoadingChange={setIsLoading}
+                      onError={(msg) => {
+                        setError(msg);
+                        setIsErrorModalOpen(true);
+                      }}
+                    />
                   </div>
                 )}
               </div>
               
-              <div className="flex-1 overflow-auto custom-scrollbar">
+              <div ref={tableContainerRef} className="flex-1 overflow-auto custom-scrollbar">
                 {exploreType === 'Datasets' ? (
                   <table className="w-full border-collapse text-sm">
                     <thead>
@@ -477,54 +456,14 @@ const ExplorerPage: FC = () => {
               </div>
 
               {exploreType === 'Datasets' && (
-                <div className="p-4 border-t border-border bg-card flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-                  <div className="flex flex-wrap items-center gap-4">
-                    <span>
-                      Showing {currentRows.length} of {datasetResult?.total_num_rows || currentRows.length} rows
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleApply(1, true)}
-                      disabled={currentPage === 1 || isLoading}
-                    >
-                      <ChevronsLeft className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleApply(currentPage - 1, true)}
-                      disabled={currentPage === 1 || isLoading}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <div className="px-3 h-8 flex items-center bg-muted rounded font-bold text-foreground">
-                      Page {currentPage} of {totalPages || 1}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleApply(currentPage + 1, true)}
-                      disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleApply(totalPages, true)}
-                      disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                    >
-                      <ChevronsRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+                <PaginationContainer
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={(page) => handleApply(page, true)}
+                  totalRows={datasetResult?.total_num_rows || currentRows.length}
+                  showingRows={currentRows.length}
+                  isLoading={isLoading}
+                />
               )}
             </div>
           )}

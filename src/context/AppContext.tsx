@@ -15,12 +15,6 @@ import { logout } from '@/lib/squirrels-api';
 
 // Utils
 
-declare global {
-  interface Window {
-    DEFAULT_HOSTURL?: string;
-  }
-}
-
 function getHostUrl(searchParams: URLSearchParams): string | null {
   const queryHostUrl = searchParams.get('hostUrl');
   if (queryHostUrl) {

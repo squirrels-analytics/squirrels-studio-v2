@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, type FC, lazy, Suspense } from 'react';
+import { useState, useMemo, useCallback, type FC, lazy, Suspense, useRef } from 'react';
 import { 
   TableIcon, 
   Info, 
@@ -6,14 +6,13 @@ import {
   ChevronRight, 
   Play, 
   RotateCw,
-  ChevronLeft,
-  ChevronsLeft,
-  ChevronsRight,
   Database,
   TriangleAlert
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
+import { ExportCsvButton } from '@/components/ExportCsvButton';
+import { PaginationContainer } from '@/components/pagination-container';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { fetchQueryResult, type SelectionValue } from '@/lib/squirrels-api';
@@ -47,6 +46,7 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedModels, setExpandedModels] = useState<Record<string, boolean>>({});
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleModel = (name: string) => {
     setExpandedModels(prev => ({ ...prev, [name]: !prev[name] }));
@@ -85,6 +85,9 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
       );
       setResult(res);
       setCurrentPage(page);
+      if (tableContainerRef.current) {
+        tableContainerRef.current.scrollTop = 0;
+      }
       if (!useApplied) {
         setAppliedSqlQuery(sqlQuery);
         setAppliedParamOverrides(paramOverrides);
@@ -97,6 +100,21 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
       setIsLoading(false);
     }
   }, [projectMetadata, sqlQuery, appliedSqlQuery, paramOverrides, appliedParamOverrides, pageSize]);
+
+  const handleFetchAllRows = async () => {
+    if (!result) {
+      throw new Error('No query result available');
+    }
+    
+    const res = await fetchQueryResult(
+      projectMetadata,
+      appliedSqlQuery,
+      appliedParamOverrides,
+      { offset: 0, limit: result.total_num_rows }
+    );
+    
+    return res.data;
+  };
 
   const handleClear = () => {
     setSqlQuery('');
@@ -148,7 +166,7 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>This model is not available to query in SQL editor</p>
+                              <p>This model is not available to query in the SQL editor</p>
                             </TooltipContent>
                           </Tooltip>
                         )}
@@ -261,7 +279,7 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
             }>
               <SqlEditor
                 value={sqlQuery}
-                onChange={(value) => setSqlQuery(value)}
+                onChange={(value: string) => setSqlQuery(value)}
                 onRunQuery={() => handleRunQuery(1)}
                 theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
                 models={models}
@@ -271,29 +289,44 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
             </Suspense>
           </div>
 
-          <div className="flex gap-2 justify-end">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleClear}
-              className="gap-2 h-8"
-            >
-              <RotateCw className="w-3.5 h-3.5" />
-              Clear
-            </Button>
-            <Button 
-              size="sm" 
-              onClick={() => handleRunQuery(1)}
-              disabled={isLoading || !sqlQuery.trim()}
-              className="gap-2 h-8 shadow-sm"
-            >
-              {isLoading ? (
-                <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <Play className="w-3.5 h-3.5 fill-current" />
-              )}
-              Run Query
-            </Button>
+          <div className="flex justify-between">
+            <div className="flex gap-2 justify-start">
+              <Button 
+                size="sm" 
+                onClick={() => handleRunQuery(1)}
+                disabled={isLoading || !sqlQuery.trim()}
+                className="gap-2 h-8 shadow-sm"
+              >
+                {isLoading ? (
+                  <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                )}
+                Run Query
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleClear}
+                className="gap-2 h-8"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+                Clear
+              </Button>
+            </div>
+
+            {result && (
+              <ExportCsvButton
+                filenamePrefix="query"
+                columns={columns}
+                currentRows={rows}
+                pageSize={pageSize}
+                currentPage={currentPage}
+                onFetchAll={handleFetchAllRows}
+                onLoadingChange={setIsLoading}
+                onError={setError}
+              />
+            )}
           </div>
         </div>
 
@@ -330,7 +363,7 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
 
           {result && (
             <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in duration-500">
-              <div className="flex-1 overflow-auto custom-scrollbar">
+              <div ref={tableContainerRef} className="flex-1 overflow-auto custom-scrollbar">
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="bg-muted/50 border-b border-border sticky top-0 z-10 backdrop-blur-sm">
@@ -357,55 +390,14 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
                 </table>
               </div>
 
-              {/* Pagination */}
-              <div className="p-4 border-t border-border bg-card/30 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-                <div className="flex flex-wrap items-center gap-4">
-                  <span>
-                    Showing {rows.length} of {result.total_num_rows} rows
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleRunQuery(1, true)}
-                    disabled={currentPage === 1 || isLoading}
-                  >
-                    <ChevronsLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleRunQuery(currentPage - 1, true)}
-                    disabled={currentPage === 1 || isLoading}
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <div className="px-3 h-8 flex items-center bg-muted rounded font-bold text-foreground min-w-[100px] justify-center">
-                    Page {currentPage} of {totalPages || 1}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleRunQuery(currentPage + 1, true)}
-                    disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => handleRunQuery(totalPages, true)}
-                    disabled={currentPage === totalPages || totalPages === 0 || isLoading}
-                  >
-                    <ChevronsRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+              <PaginationContainer
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => handleRunQuery(page, true)}
+                totalRows={result.total_num_rows}
+                showingRows={rows.length}
+                isLoading={isLoading}
+              />
             </div>
           )}
         </div>
