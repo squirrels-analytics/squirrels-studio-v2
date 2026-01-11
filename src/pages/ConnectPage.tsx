@@ -7,7 +7,7 @@ import { ModeToggle } from '@/components/mode-toggle';
 import { GlowCard } from '@/components/glow-card';
 import { useApp } from '@/context/AppContext';
 import { ApiError, fetchProjectMetadata } from '@/lib/squirrels-api';
-import type { ProjectMetadataResponse } from '@/types/ProjectMetadataResponse';
+import type { ProjectMetadataResponse } from '@/types/project-metadata-response';
 
 const ConnectPage: React.FC = () => {
   const navigate = useNavigate();

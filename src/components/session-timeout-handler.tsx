@@ -4,7 +4,7 @@ import useSWR from 'swr';
 import { useApp } from '@/context/AppContext';
 import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { fetchUserSession } from '@/lib/squirrels-api';
-import type { UserSessionResponse } from '@/types/AuthResponses';
+import type { UserSessionResponse } from '@/types/auth-responses';
 import { PROTECTED_PATHS } from '@/context/AppContext';
 import {
   Dialog,
@@ -36,7 +36,8 @@ export const SessionTimeoutHandler: React.FC = () => {
   // we need to fetch it to restore the session or confirm we are still logged in.
   // We only fetch if we have projectMetadata (to get the URL), missing session data,
   // and haven't explicitly been marked as a guest.
-  const shouldFetchSession = !!projectMetadata && (userProps === null && !isGuest) && isProtectedPath;
+  // We also DON'T fetch if the session expired modal is already open.
+  const shouldFetchSession = !!projectMetadata && (userProps === null && !isGuest) && isProtectedPath && !isSessionExpiredModalOpen;
 
   useSWR<UserSessionResponse>(
     shouldFetchSession ? projectMetadata!.api_routes.get_user_session_url : null,

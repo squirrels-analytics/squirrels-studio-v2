@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useApp } from '@/context/AppContext';
 import { fetchUsers, fetchUserFields, addUser, updateUser, deleteUser, ApiError } from '@/lib/squirrels-api';
-import type { RegisteredUser } from '@/types/UserFieldsResponse';
+import type { RegisteredUser } from '@/types/user-fields-response';
 import NotFoundPage from './NotFoundPage';
 
 const ManageUsersPage: FC = () => {

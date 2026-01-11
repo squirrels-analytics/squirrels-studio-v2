@@ -3,7 +3,7 @@ import { useLocation, Navigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { useApp } from '@/context/AppContext';
 import { fetchProjectMetadata } from '@/lib/squirrels-api';
-import type { ProjectMetadataResponse } from '@/types/ProjectMetadataResponse';
+import type { ProjectMetadataResponse } from '@/types/project-metadata-response';
 
 interface ProjectInitializerProps {
   children: React.ReactNode;

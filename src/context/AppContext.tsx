@@ -8,9 +8,9 @@ import React, {
   type ReactNode,
 } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { ProjectMetadataResponse } from '@/types/ProjectMetadataResponse';
-import type { UserInfo } from '@/types/AuthResponses';
-import type { ExploreEndpointsResponse } from '@/types/ExploreEndpointsResponse';
+import type { ProjectMetadataResponse } from '@/types/project-metadata-response';
+import type { UserInfo } from '@/types/auth-responses';
+import type { ExploreEndpointsResponse } from '@/types/explore-endpoints-response';
 import { logout } from '@/lib/squirrels-api';
 
 // Utils

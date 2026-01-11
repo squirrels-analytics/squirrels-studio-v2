@@ -8,7 +8,7 @@ import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
 import { GlowCard } from '@/components/glow-card';
 import { fetchAuthProviders, login, logout, ApiError } from '@/lib/squirrels-api';
-import type { AuthProvidersResponse } from '@/types/AuthResponses';
+import type { AuthProvidersResponse } from '@/types/auth-responses';
 import {
   Dialog,
   DialogContent,

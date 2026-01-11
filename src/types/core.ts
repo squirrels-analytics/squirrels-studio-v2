@@ -1,0 +1,1 @@
+export type ExplorerOptionType = 'Datasets' | 'Dashboards' | 'SQLEditor';

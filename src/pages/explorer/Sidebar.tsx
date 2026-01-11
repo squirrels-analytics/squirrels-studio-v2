@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/tooltip';
 import { parseISO } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
+import { hasElevatedAccess, type AccessLevel } from '@/lib/access';
 import type { SelectionValue } from '@/lib/squirrels-api';
 import type {
   AnyParameterModel,
@@ -36,7 +37,8 @@ import type {
   ParameterOptionModel,
   DatasetItemModel,
   DashboardItemModel,
-} from '@/types/DataCatalogResponse';
+} from '@/types/data-catalog-response';
+import type { ExplorerOptionType } from '@/types/core';
 
 const ParameterWidget: FC<{ label: string; description?: string; children: ReactNode }> = ({ label, description, children }) => (
   <div className="space-y-2 mb-6 last:mb-0">
@@ -60,8 +62,8 @@ const ParameterWidget: FC<{ label: string; description?: string; children: React
 );
 
 interface SidebarProps {
-  exploreType: 'Datasets' | 'Dashboards';
-  setExploreType: (type: 'Datasets' | 'Dashboards') => void;
+  exploreType: ExplorerOptionType;
+  setExploreType: (type: ExplorerOptionType) => void;
   activeAssetName: string | null;
   onAssetChange: (name: string) => void;
   datasets: DatasetItemModel[];
@@ -71,6 +73,8 @@ interface SidebarProps {
   isLoading: boolean;
   onParamChange: (param: AnyParameterModel, value: SelectionValue) => void;
   onApply: () => void;
+  userAccessLevel: AccessLevel | null;
+  elevatedAccessLevel: AccessLevel | null;
 }
 
 export const Sidebar: FC<SidebarProps> = ({
@@ -85,7 +89,11 @@ export const Sidebar: FC<SidebarProps> = ({
   isLoading,
   onParamChange,
   onApply,
+  userAccessLevel,
+  elevatedAccessLevel,
 }) => {
+  const showSqlPlayground = hasElevatedAccess(userAccessLevel, elevatedAccessLevel);
+
   return (
     <aside className="w-90 bg-card border-r border-border flex flex-col h-full shadow-sm z-20 overflow-hidden">
       {/* Top Section: Fixed */}
@@ -99,28 +107,37 @@ export const Sidebar: FC<SidebarProps> = ({
             <SelectContent>
               <SelectItem value="Datasets">Datasets</SelectItem>
               <SelectItem value="Dashboards">Dashboards</SelectItem>
+              {showSqlPlayground && <SelectItem value="SQLEditor">SQL Playground</SelectItem>}
             </SelectContent>
           </Select>
+
+          {exploreType === 'SQLEditor' && (
+            <p className="mt-4 text-xs text-muted-foreground leading-relaxed">
+              Note: Below are all the parameters for this Squirrels project. Changing their selections may affect the results of dbview and federate models, based on their implementations.
+            </p>
+          )}
         </div>
 
-        <div>
-          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Select a {exploreType.slice(0, -1)}:</h3>
-          <Select 
-            value={activeAssetName || ''} 
-            onValueChange={onAssetChange}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={`Select a ${exploreType.slice(0, -1).toLowerCase()}`} />
-            </SelectTrigger>
-            <SelectContent>
-              {(exploreType === 'Datasets' ? datasets : dashboards).map(asset => (
-                <SelectItem key={asset.name} value={asset.name_for_api}>
-                  {asset.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {exploreType !== 'SQLEditor' && (
+          <div>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Select a {exploreType.slice(0, -1)}:</h3>
+            <Select 
+              value={activeAssetName || ''} 
+              onValueChange={onAssetChange}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={`Select a ${exploreType.slice(0, -1).toLowerCase()}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {(exploreType === 'Datasets' ? datasets : dashboards).map(asset => (
+                  <SelectItem key={asset.name} value={asset.name_for_api}>
+                    {asset.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Middle Section: Scrollable Parameters */}
@@ -237,20 +254,22 @@ export const Sidebar: FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Section: Fixed Apply Button */}
-      <div className="p-6 border-t border-border">
-        <Button 
-          onClick={onApply}
-          disabled={isLoading || !activeAssetName}
-          className="w-full font-bold py-6 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-        >
-          {isLoading ? (
-            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <Play className="w-4 h-4 fill-current" />
-          )}
-          Apply
-        </Button>
-      </div>
+      {exploreType !== 'SQLEditor' && (
+        <div className="p-6 border-t border-border">
+          <Button 
+            onClick={onApply}
+            disabled={isLoading || !activeAssetName}
+            className="w-full font-bold py-6 rounded-xl shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+          >
+            {isLoading ? (
+              <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Play className="w-4 h-4 fill-current" />
+            )}
+            Apply
+          </Button>
+        </div>
+      )}
     </aside>
   );
 };

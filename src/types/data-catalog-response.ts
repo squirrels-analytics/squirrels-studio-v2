@@ -90,6 +90,55 @@ export interface DashboardItemModel extends DatasetItemModel {
   result_format: 'png' | 'html';
 }
 
+export interface ColumnConfig {
+  name: string;
+  type?: string;
+  description?: string;
+  condition?: string[];
+  category?: 'dimension' | 'measure' | 'misc';
+  depends_on?: string[];
+  pass_through?: boolean;
+}
+
+export interface ModelConfig {
+  description?: string;
+  columns?: ColumnConfig[];
+  depends_on?: string[];
+  materialization?: string;
+  connection?: string | null;
+  translate_to_duckdb?: boolean;
+}
+
+export interface DataModelItem {
+  name: string;
+  model_type: 'source' | 'dbview' | 'federate' | 'seed' | 'build';
+  config: ModelConfig;
+  is_queryable: boolean;
+}
+
+interface ConnectionItem {
+  name: string;
+  label: string;
+}
+
+interface LineageNode {
+  name: string;
+  type: 'dataset' | 'dashboard' | 'model';
+}
+
+interface LineageItem {
+  type: 'buildtime' | 'runtime';
+  source: LineageNode;
+  target: LineageNode;
+}
+
+interface ConfigurablesItem {
+  name: string;
+  label: string;
+  default: string;
+  description: string;
+}
+
 export interface ParametersResponse {
   parameters: AnyParameterModel[];
 }
@@ -98,4 +147,8 @@ export interface DataCatalogResponse {
   parameters: AnyParameterModel[];
   datasets: DatasetItemModel[];
   dashboards: DashboardItemModel[];
+  models?: DataModelItem[];
+  connections?: ConnectionItem[];
+  lineage?: LineageItem[];
+  configurables?: ConfigurablesItem[];
 }

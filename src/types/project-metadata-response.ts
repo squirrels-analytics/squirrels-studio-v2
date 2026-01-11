@@ -4,7 +4,7 @@ export interface ProjectMetadataResponse {
   version: string; // Ex. "1"
   label: string;   // Ex. "My Project"
   description: string;
-  auth_type: "optional" | "required";
+  auth_type?: "optional" | "required";
   password_requirements: {
     min_length: number;
     max_length: number;

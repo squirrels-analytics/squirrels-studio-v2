@@ -1,12 +1,13 @@
-import type { ProjectMetadataResponse } from '@/types/ProjectMetadataResponse';
-import type { DataCatalogResponse, ParametersResponse } from '@/types/DataCatalogResponse';
-import type { AuthProvidersResponse, ChangePasswordRequest, ApiKeyRequestBody, ApiKeyResponse, RegisteredApiKey } from '@/types/AuthResponses';
+import type { ProjectMetadataResponse } from '@/types/project-metadata-response';
+import type { DataCatalogResponse, ParametersResponse } from '@/types/data-catalog-response';
+import type { AuthProvidersResponse, ChangePasswordRequest, ApiKeyRequestBody, ApiKeyResponse, RegisteredApiKey } from '@/types/auth-responses';
 import { format } from 'date-fns';
 import type { DateRange } from 'react-day-picker';
-import type { UserSessionResponse } from '@/types/AuthResponses';
-import type { DatasetResultResponse } from '@/types/DatasetResultResponse';
-import type { ExploreEndpointsResponse } from '@/types/ExploreEndpointsResponse';
-import type { UserFieldsResponse, RegisteredUser, AddUserModel, UpdateUserModel } from '@/types/UserFieldsResponse';
+import type { UserSessionResponse } from '@/types/auth-responses';
+import type { DatasetResultResponse } from '@/types/dataset-result-response';
+import type { ExploreEndpointsResponse } from '@/types/explore-endpoints-response';
+import type { UserFieldsResponse, RegisteredUser, AddUserModel, UpdateUserModel } from '@/types/user-fields-response';
+import type { ExplorerOptionType } from '@/types/core';
 
 export class ApiError extends Error {
   status?: number;
@@ -86,9 +87,77 @@ export async function fetchDataCatalog(dataCatalogUrl: string): Promise<DataCata
 
 export type SelectionValue = string | number | string[] | [number, number] | Date | DateRange | null | undefined;
 
+function normalizeSelectionValueForApi(value: SelectionValue): string[] {
+  if (value === undefined || value === null) return [];
+  if (Array.isArray(value)) {
+    return value.map(val => String(val));
+  } else if (value instanceof Date) {
+    return [format(value, 'yyyy-MM-dd')];
+  } else if (typeof value === 'object' && ('from' in value || 'to' in value)) {
+    const dr = value as { from?: Date; to?: Date };
+    const result: string[] = [];
+    if (dr.from) result.push(format(dr.from, 'yyyy-MM-dd'));
+    if (dr.to) result.push(format(dr.to, 'yyyy-MM-dd'));
+    return result;
+  } else {
+    return [String(value)];
+  }
+}
+
+export async function fetchProjectParameters(
+  projectMetadata: ProjectMetadataResponse,
+  parentParam?: string,
+  parentSelection?: SelectionValue
+): Promise<ParametersResponse> {
+  const url = projectMetadata.api_routes.get_parameters_url;
+  const queryParams = new URLSearchParams();
+  
+  if (parentParam && parentSelection !== undefined && parentSelection !== null) {
+    queryParams.append('x_parent_param', parentParam);
+    const values = normalizeSelectionValueForApi(parentSelection);
+    values.forEach(v => queryParams.append(parentParam, v));
+  }
+  
+  const queryString = queryParams.toString();
+  const fullUrl = url + (queryString ? '?' + queryString : '');
+  return fetchJson<ParametersResponse>(fullUrl);
+}
+
+export async function fetchQueryResult(
+  projectMetadata: ProjectMetadataResponse,
+  sql: string,
+  paramOverrides: Record<string, SelectionValue>,
+  pagination?: { offset: number; limit: number }
+): Promise<DatasetResultResponse> {
+  const url = projectMetadata.api_routes.get_query_result_url;
+  
+  const body: Record<string, any> = {
+    x_sql_query: sql,
+    x_orientation: 'rows',
+    x_offset: pagination?.offset ?? 0,
+    x_limit: pagination?.limit ?? 1000,
+  };
+
+  Object.entries(paramOverrides).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    const values = normalizeSelectionValueForApi(value);
+    if (values.length === 1) {
+      body[key] = values[0];
+    } else if (values.length > 1) {
+      body[key] = values;
+    }
+  });
+
+  return fetchJson<DatasetResultResponse>(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function fetchAssetParameters(
   projectMetadata: ProjectMetadataResponse,
-  exploreType: 'Datasets' | 'Dashboards',
+  exploreType: ExplorerOptionType,
   assetName: string,
   parentParam?: string,
   parentSelection?: SelectionValue
@@ -100,16 +169,8 @@ export async function fetchAssetParameters(
   const queryParams = new URLSearchParams();
   if (parentParam && parentSelection !== undefined && parentSelection !== null) {
     queryParams.append('x_parent_param', parentParam);
-    
-    if (Array.isArray(parentSelection)) {
-      parentSelection.forEach(val => queryParams.append(parentParam, String(val)));
-    } else if (typeof parentSelection === 'object' && ('from' in parentSelection || 'to' in parentSelection)) {
-      const dr = parentSelection as { from?: Date; to?: Date };
-      if (dr.from) queryParams.append(parentParam, format(dr.from, 'yyyy-MM-dd'));
-      if (dr.to) queryParams.append(parentParam, format(dr.to, 'yyyy-MM-dd'));
-    } else {
-      queryParams.append(parentParam, String(parentSelection));
-    }
+    const values = normalizeSelectionValueForApi(parentSelection);
+    values.forEach(v => queryParams.append(parentParam, v));
   }
   
   const queryString = queryParams.toString();
@@ -119,7 +180,7 @@ export async function fetchAssetParameters(
 
 export async function fetchAssetResults(
   projectMetadata: ProjectMetadataResponse,
-  exploreType: 'Datasets' | 'Dashboards',
+  exploreType: ExplorerOptionType,
   assetName: string,
   paramOverrides: Record<string, SelectionValue>,
   pagination?: { offset: number; limit: number }
@@ -140,18 +201,8 @@ export async function fetchAssetResults(
   
   Object.entries(paramOverrides).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
-    
-    if (Array.isArray(value)) {
-      value.forEach(val => queryParams.append(key, String(val)));
-    } else if (typeof value === 'object' && value instanceof Date) {
-      queryParams.append(key, format(value, 'yyyy-MM-dd'));
-    } else if (typeof value === 'object' && ('from' in value || 'to' in value)) {
-      const dr = value as { from?: Date; to?: Date };
-      if (dr.from) queryParams.append(key, format(dr.from, 'yyyy-MM-dd'));
-      if (dr.to) queryParams.append(key, format(dr.to, 'yyyy-MM-dd'));
-    } else {
-      queryParams.append(key, String(value));
-    }
+    const values = normalizeSelectionValueForApi(value);
+    values.forEach(v => queryParams.append(key, v));
   });
   
   const queryString = queryParams.toString();

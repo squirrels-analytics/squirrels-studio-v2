@@ -26,8 +26,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { downloadCsv } from '@/lib/utils';
-import { fetchDataCatalog, fetchAssetParameters, fetchAssetResults, logout, type SelectionValue } from '@/lib/squirrels-api';
+import { fetchDataCatalog, fetchAssetParameters, fetchAssetResults, fetchProjectParameters, logout, type SelectionValue } from '@/lib/squirrels-api';
 import NotFoundPage from '../NotFoundPage';
+import { SqlPlayground } from './SqlPlayground';
 import type {
   DataCatalogResponse,
   AnyParameterModel,
@@ -35,10 +36,11 @@ import type {
   MultiSelectParameterModel,
   ParametersResponse,
   DashboardItemModel
-} from '@/types/DataCatalogResponse';
-import type { DatasetResultResponse } from '@/types/DatasetResultResponse';
+} from '@/types/data-catalog-response';
+import type { DatasetResultResponse } from '@/types/dataset-result-response';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
+import type { ExplorerOptionType } from '@/types/core';
 
 const ExplorerPage: FC = () => {
   const appNavigate = useAppNavigate();
@@ -68,10 +70,11 @@ const ExplorerPage: FC = () => {
     appNavigate('/login');
   };
 
-  const [exploreType, setExploreType] = useState<'Datasets' | 'Dashboards'>('Datasets');
+  const [exploreType, setExploreType] = useState<ExplorerOptionType>('Datasets');
   const [selectedDatasetName, setSelectedDatasetName] = useState<string | null>(null);
   const [selectedDashboardName, setSelectedDashboardName] = useState<string | null>(null);
   const [paramOverrides, setParamOverrides] = useState<Record<string, SelectionValue>>({});
+  const [appliedParamOverrides, setAppliedParamOverrides] = useState<Record<string, SelectionValue>>({});
   const [hasData, setHasData] = useState(false);
   const [datasetResult, setDatasetResult] = useState<DatasetResultResponse | null>(null);
   const [dashboardResult, setDashboardResult] = useState<string | null>(null);
@@ -105,13 +108,19 @@ const ExplorerPage: FC = () => {
   }, [exploreType, activeAssetName, datasets, dashboards]);
 
   // Fetch Parameters for Active Asset
-  const paramKey = projectMetadata && activeAssetName && !isLoggingOut && !isSessionExpiredModalOpen
+  const effectiveAssetName = exploreType === 'SQLEditor' || activeAssetName;
+  const paramKey = projectMetadata && effectiveAssetName && !isLoggingOut && !isSessionExpiredModalOpen
     ? [projectMetadata, exploreType, activeAssetName, userProps?.username, 'params']
     : null;
 
   const { data: paramsData, mutate: mutateParams } = useSWR<ParametersResponse>(
     paramKey,
-    () => fetchAssetParameters(projectMetadata!, exploreType, activeAssetName!)
+    () => {
+      if (exploreType === 'SQLEditor') {
+        return fetchProjectParameters(projectMetadata!);
+      }
+      return fetchAssetParameters(projectMetadata!, exploreType, activeAssetName!);
+    }
   );
 
   const parameters = paramsData?.parameters ?? [];
@@ -124,13 +133,9 @@ const ExplorerPage: FC = () => {
       const p = param as SingleSelectParameterModel | MultiSelectParameterModel;
       if (p.trigger_refresh) {
         try {
-          const refreshed = await fetchAssetParameters(
-            projectMetadata!,
-            exploreType,
-            activeAssetName!,
-            name,
-            value
-          );
+          const refreshed = exploreType === 'SQLEditor'
+            ? await fetchProjectParameters(projectMetadata!, name, value)
+            : await fetchAssetParameters(projectMetadata!, exploreType, activeAssetName!, name, value);
 
           // Update cache
           if (paramsData) {
@@ -159,10 +164,11 @@ const ExplorerPage: FC = () => {
     }
   };
 
-  const handleApply = useCallback(async (pageOrEvent: number | React.MouseEvent | unknown = 1) => {
+  const handleApply = useCallback(async (pageOrEvent: number | React.MouseEvent | unknown = 1, useAppliedParams: boolean = false) => {
     if (!projectMetadata || !activeAssetName) return;
     
     const page = typeof pageOrEvent === 'number' ? pageOrEvent : 1;
+    const currentParams = useAppliedParams ? appliedParamOverrides : paramOverrides;
     
     setIsLoading(true);
     setError(null);
@@ -171,7 +177,7 @@ const ExplorerPage: FC = () => {
         projectMetadata,
         exploreType,
         activeAssetName,
-        paramOverrides,
+        currentParams,
         exploreType === 'Datasets' ? { offset: (page - 1) * pageSize, limit: pageSize } : undefined
       );
       
@@ -192,6 +198,9 @@ const ExplorerPage: FC = () => {
         }
       }
       setHasData(true);
+      if (!useAppliedParams) {
+        setAppliedParamOverrides(paramOverrides);
+      }
     } catch (err) {
       console.error('Failed to fetch results:', err);
       setError(err instanceof Error ? err.message : 'An error occurred while fetching data');
@@ -204,6 +213,7 @@ const ExplorerPage: FC = () => {
     activeAssetName,
     exploreType,
     paramOverrides,
+    appliedParamOverrides,
     pageSize,
     dashboardResult,
     setIsLoading
@@ -245,7 +255,7 @@ const ExplorerPage: FC = () => {
         projectMetadata,
         exploreType,
         activeAssetName,
-        paramOverrides,
+        appliedParamOverrides,
         { offset: 0, limit: datasetResult.total_num_rows }
       );
       
@@ -291,6 +301,7 @@ const ExplorerPage: FC = () => {
           setExploreType={(type) => {
             setExploreType(type);
             setParamOverrides({});
+            setAppliedParamOverrides({});
             setHasData(false);
             setDatasetResult(null);
             setCurrentPage(1);
@@ -305,6 +316,7 @@ const ExplorerPage: FC = () => {
             if (exploreType === 'Datasets') setSelectedDatasetName(val);
             else setSelectedDashboardName(val);
             setParamOverrides({});
+            setAppliedParamOverrides({});
             setHasData(false);
             setDatasetResult(null);
             setCurrentPage(1);
@@ -321,6 +333,8 @@ const ExplorerPage: FC = () => {
           isLoading={isLoading}
           onParamChange={handleParamChange}
           onApply={handleApply}
+          userAccessLevel={userProps?.access_level || null}
+          elevatedAccessLevel={projectMetadata?.elevated_access_level || null}
         />
 
         {/* Main Content Area */}
@@ -339,7 +353,14 @@ const ExplorerPage: FC = () => {
             </DialogContent>
           </Dialog>
 
-          {!hasData ? (
+          {exploreType === 'SQLEditor' ? (
+            <SqlPlayground 
+              models={catalog?.models ?? []} 
+              projectMetadata={projectMetadata!} 
+              paramOverrides={paramOverrides}
+              pageSize={pageSize}
+            />
+          ) : !hasData ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4">
               <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center border-4 border-dashed border-border">
                 {exploreType === 'Datasets' ? (
@@ -448,7 +469,7 @@ const ExplorerPage: FC = () => {
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleApply(1)}
+                      onClick={() => handleApply(1, true)}
                       disabled={currentPage === 1 || isLoading}
                     >
                       <ChevronsLeft className="w-4 h-4" />
@@ -457,7 +478,7 @@ const ExplorerPage: FC = () => {
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleApply(currentPage - 1)}
+                      onClick={() => handleApply(currentPage - 1, true)}
                       disabled={currentPage === 1 || isLoading}
                     >
                       <ChevronLeft className="w-4 h-4" />
@@ -469,7 +490,7 @@ const ExplorerPage: FC = () => {
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleApply(currentPage + 1)}
+                      onClick={() => handleApply(currentPage + 1, true)}
                       disabled={currentPage === totalPages || totalPages === 0 || isLoading}
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -478,7 +499,7 @@ const ExplorerPage: FC = () => {
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => handleApply(totalPages)}
+                      onClick={() => handleApply(totalPages, true)}
                       disabled={currentPage === totalPages || totalPages === 0 || isLoading}
                     >
                       <ChevronsRight className="w-4 h-4" />
