@@ -9,13 +9,15 @@ import {
   ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
-  Database
+  Database,
+  TriangleAlert
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { fetchQueryResult, type SelectionValue } from '@/lib/squirrels-api';
-import type { DataModelItem } from '@/types/data-catalog-response';
+import type { DataModelItem, ConnectionItem } from '@/types/data-catalog-response';
 import type { ProjectMetadataResponse } from '@/types/project-metadata-response';
 import type { DatasetResultResponse } from '@/types/dataset-result-response';
 
@@ -23,6 +25,7 @@ const SqlEditor = lazy(() => import('./SqlEditor'));
 
 interface SqlPlaygroundProps {
   models: DataModelItem[];
+  connections?: ConnectionItem[];
   projectMetadata: ProjectMetadataResponse;
   paramOverrides: Record<string, SelectionValue>;
   pageSize: number;
@@ -30,6 +33,7 @@ interface SqlPlaygroundProps {
 
 export const SqlPlayground: FC<SqlPlaygroundProps> = ({
   models,
+  connections = [],
   projectMetadata,
   paramOverrides,
   pageSize,
@@ -50,8 +54,8 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
 
   const groupedModels = useMemo(() => {
     const groups: Record<string, DataModelItem[]> = {
-      source: [],
       seed: [],
+      source: [],
       build: [],
       dbview: [],
       federate: [],
@@ -130,23 +134,51 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
                     <div key={model.name} className="border border-border/50 rounded-lg overflow-hidden bg-card/50 transition-all hover:border-primary/30">
                       <button
                         onClick={() => toggleModel(model.name)}
-                        className="w-full text-left p-2.5 flex items-center justify-between hover:bg-accent/50 transition-colors"
+                        className="w-full text-left p-2.5 flex items-center gap-2 hover:bg-accent/50 transition-colors"
                       >
                         <span className="text-sm font-semibold truncate flex items-center gap-2">
                           {expandedModels[model.name] ? <ChevronDown className="w-3.5 h-3.5 text-primary" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                           {model.name}
                         </span>
                         {!model.is_queryable && (
-                          <Badge variant="default" className="text-[9px] h-4 px-1 leading-none">Querying Not Supported</Badge>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center">
+                                <TriangleAlert className="w-4 h-4 text-amber-500 hover:text-amber-600 transition-colors" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>This model is not available to query in SQL editor</p>
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </button>
                       {expandedModels[model.name] && (
                         <div className="p-3 pt-0 border-t border-border/30 bg-background/50 animate-in slide-in-from-top-1 duration-200">
                           {model.config.description && (
-                            <p className="text-xs text-muted-foreground mb-3 leading-relaxed italic">
-                              {model.config.description}
-                            </p>
+                            <div className="py-3 border-b border-border/30 mb-3">
+                              <p className="text-xs text-muted-foreground leading-relaxed italic">
+                                {model.config.description}
+                              </p>
+                            </div>
                           )}
+
+                          {model.config.connection && (
+                            <div className="mb-3 space-y-1.5 border-b border-border/30 pb-3">
+                              <h5 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Connection</h5>
+                              <p className="text-sm text-foreground px-1">
+                                {connections.find(c => c.name === model.config.connection)?.label || model.config.connection}
+                              </p>
+                            </div>
+                          )}
+
+                          {model.config.table && (
+                            <div className="mb-3 space-y-1.5 border-b border-border/30 pb-3">
+                              <h5 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Table</h5>
+                              <p className="text-sm text-foreground px-1">{model.config.table}</p>
+                            </div>
+                          )}
+
                           <div className="space-y-1.5">
                             <h5 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Columns</h5>
                             <div className="flex flex-col gap-3">

@@ -105,20 +105,29 @@ export const Sidebar: FC<SidebarProps> = ({
               <SelectValue placeholder="Select type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Datasets">Datasets</SelectItem>
-              <SelectItem value="Dashboards">Dashboards</SelectItem>
-              {showSqlPlayground && <SelectItem value="SQLEditor">SQL Playground</SelectItem>}
+              <SelectItem value='Datasets'>Datasets</SelectItem>
+              <SelectItem value='Dashboards'>Dashboards</SelectItem>
+              {showSqlPlayground && (
+                <>
+                  <SelectItem value='SqlPlayground'>SQL Playground</SelectItem>
+                  <SelectItem value='DataLineage'>Data Lineage</SelectItem>
+                </>
+              )}
             </SelectContent>
           </Select>
 
-          {exploreType === 'SQLEditor' && (
+          {(exploreType === 'SqlPlayground' || exploreType === 'DataLineage') && (
             <p className="mt-4 text-xs text-muted-foreground leading-relaxed">
-              Note: Below are all the parameters for this Squirrels project. Changing their selections may affect the results of dbview and federate models, based on their implementations.
+              Note: Below are all the parameters for this Squirrels project. 
+              {exploreType === 'SqlPlayground' 
+                ? ' Changing these selections may change the underlying data created by dbview and federate models.' 
+                : ' Changing these selections may change the compiled definition of dbview and federate models.'
+              }
             </p>
           )}
         </div>
 
-        {exploreType !== 'SQLEditor' && (
+        {exploreType !== 'SqlPlayground' && exploreType !== 'DataLineage' && (
           <div>
             <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Select a {exploreType.slice(0, -1)}:</h3>
             <Select 
@@ -254,7 +263,7 @@ export const Sidebar: FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Section: Fixed Apply Button */}
-      {exploreType !== 'SQLEditor' && (
+      {exploreType !== 'SqlPlayground' && exploreType !== 'DataLineage' && (
         <div className="p-6 border-t border-border">
           <Button 
             onClick={onApply}

@@ -78,12 +78,25 @@ export type AnyParameterModel =
   | NumberRangeParameterModel
   | TextParameterModel;
 
+export interface ColumnWithConditionModel {
+  name: string;
+  type: string;
+  description: string;
+  category: string;
+  condition: string | null;
+}
+
+export interface SchemaWithConditionModel {
+  fields: ColumnWithConditionModel[];
+}
+
 export interface DatasetItemModel {
   name: string;
   name_for_api: string;
   label: string;
   description: string;
   parameters: string[];
+  schema: SchemaWithConditionModel;
 }
 
 export interface DashboardItemModel extends DatasetItemModel {
@@ -103,10 +116,8 @@ export interface ColumnConfig {
 export interface ModelConfig {
   description?: string;
   columns?: ColumnConfig[];
-  depends_on?: string[];
-  materialization?: string;
   connection?: string | null;
-  translate_to_duckdb?: boolean;
+  table?: string;
 }
 
 export interface DataModelItem {
@@ -116,7 +127,7 @@ export interface DataModelItem {
   is_queryable: boolean;
 }
 
-interface ConnectionItem {
+export interface ConnectionItem {
   name: string;
   label: string;
 }

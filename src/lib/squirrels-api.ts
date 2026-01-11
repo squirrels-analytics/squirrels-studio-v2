@@ -8,6 +8,7 @@ import type { DatasetResultResponse } from '@/types/dataset-result-response';
 import type { ExploreEndpointsResponse } from '@/types/explore-endpoints-response';
 import type { UserFieldsResponse, RegisteredUser, AddUserModel, UpdateUserModel } from '@/types/user-fields-response';
 import type { ExplorerOptionType } from '@/types/core';
+import type { CompiledQueryModel } from '@/types/compiled-query-model';
 
 export class ApiError extends Error {
   status?: number;
@@ -218,6 +219,31 @@ export async function fetchAssetResults(
   } else {
     return response.text();
   }
+}
+
+export async function fetchCompiledModel(
+  projectMetadata: ProjectMetadataResponse,
+  modelName: string,
+  paramOverrides: Record<string, SelectionValue>
+): Promise<CompiledQueryModel> {
+  const url = projectMetadata.api_routes.get_compiled_model_url.replace('{model_name}', modelName);
+  
+  const body: Record<string, any> = {};
+  Object.entries(paramOverrides).forEach(([key, value]) => {
+    if (value === undefined || value === null) return;
+    const values = normalizeSelectionValueForApi(value);
+    if (values.length === 1) {
+      body[key] = values[0];
+    } else if (values.length > 1) {
+      body[key] = values;
+    }
+  });
+
+  return fetchJson<CompiledQueryModel>(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
 
 export async function changePassword(url: string, data: ChangePasswordRequest): Promise<void> {

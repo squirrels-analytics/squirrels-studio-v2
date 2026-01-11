@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback, type FC } from 'react';
+import { useState, useMemo, useCallback, lazy, Suspense, type FC } from 'react';
 import { Navigate } from 'react-router-dom';
-import { ChevronDown, TableIcon, Download, LayoutDashboardIcon, Info, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ChevronDown, TableIcon, Download, LayoutDashboardIcon, Info, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from 'lucide-react';
 import useSWR from 'swr';
 import { useApp } from '@/context/AppContext';
 import { useAppNavigate } from '@/hooks/useAppNavigate';
@@ -29,6 +29,9 @@ import { downloadCsv } from '@/lib/utils';
 import { fetchDataCatalog, fetchAssetParameters, fetchAssetResults, fetchProjectParameters, logout, type SelectionValue } from '@/lib/squirrels-api';
 import NotFoundPage from '../NotFoundPage';
 import { SqlPlayground } from './SqlPlayground';
+
+const DataLineageExplorer = lazy(() => import('./DataLineageExplorer'));
+
 import type {
   DataCatalogResponse,
   AnyParameterModel,
@@ -108,7 +111,7 @@ const ExplorerPage: FC = () => {
   }, [exploreType, activeAssetName, datasets, dashboards]);
 
   // Fetch Parameters for Active Asset
-  const effectiveAssetName = exploreType === 'SQLEditor' || activeAssetName;
+  const effectiveAssetName = exploreType === 'SqlPlayground' || exploreType === 'DataLineage' || activeAssetName;
   const paramKey = projectMetadata && effectiveAssetName && !isLoggingOut && !isSessionExpiredModalOpen
     ? [projectMetadata, exploreType, activeAssetName, userProps?.username, 'params']
     : null;
@@ -116,7 +119,7 @@ const ExplorerPage: FC = () => {
   const { data: paramsData, mutate: mutateParams } = useSWR<ParametersResponse>(
     paramKey,
     () => {
-      if (exploreType === 'SQLEditor') {
+      if (exploreType === 'SqlPlayground' || exploreType === 'DataLineage') {
         return fetchProjectParameters(projectMetadata!);
       }
       return fetchAssetParameters(projectMetadata!, exploreType, activeAssetName!);
@@ -133,7 +136,7 @@ const ExplorerPage: FC = () => {
       const p = param as SingleSelectParameterModel | MultiSelectParameterModel;
       if (p.trigger_refresh) {
         try {
-          const refreshed = exploreType === 'SQLEditor'
+          const refreshed = (exploreType === 'SqlPlayground' || exploreType === 'DataLineage')
             ? await fetchProjectParameters(projectMetadata!, name, value)
             : await fetchAssetParameters(projectMetadata!, exploreType, activeAssetName!, name, value);
 
@@ -353,13 +356,29 @@ const ExplorerPage: FC = () => {
             </DialogContent>
           </Dialog>
 
-          {exploreType === 'SQLEditor' ? (
+          {exploreType === 'SqlPlayground' ? (
             <SqlPlayground 
               models={catalog?.models ?? []} 
+              connections={catalog?.connections ?? []}
               projectMetadata={projectMetadata!} 
               paramOverrides={paramOverrides}
               pageSize={pageSize}
             />
+          ) : exploreType === 'DataLineage' ? (
+            <Suspense fallback={
+              <div className="h-full w-full flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <p className="text-sm text-muted-foreground">Loading lineage explorer...</p>
+                </div>
+              </div>
+            }>
+              <DataLineageExplorer
+                catalog={catalog!}
+                projectMetadata={projectMetadata!}
+                paramOverrides={paramOverrides}
+              />
+            </Suspense>
           ) : !hasData ? (
             <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4">
               <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center border-4 border-dashed border-border">

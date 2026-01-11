@@ -1,1 +1,1 @@
-export type ExplorerOptionType = 'Datasets' | 'Dashboards' | 'SQLEditor';
+export type ExplorerOptionType = 'Datasets' | 'Dashboards' | 'SqlPlayground' | 'DataLineage';
