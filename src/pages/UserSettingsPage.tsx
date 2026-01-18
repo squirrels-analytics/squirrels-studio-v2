@@ -16,7 +16,8 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/hooks/useApp';
+import { isManagedAuthProject } from '@/lib/auth-strategy';
 import { changePassword, fetchApiKeys, createApiKey, revokeApiKey, ApiError } from '@/lib/squirrels-api';
 import NotFoundPage from './NotFoundPage';
 
@@ -32,6 +33,8 @@ const UserSettingsPage: FC = () => {
   const appNavigate = useAppNavigate();
   const { projectMetadata, userProps, isSessionExpiredModalOpen } = useApp();
   const { mutate } = useSWRConfig();
+  const managedProject = isManagedAuthProject(projectMetadata) ? projectMetadata : null;
+  const routes = managedProject?.api_routes ?? null;
   
   const [apiKeyExpires, setApiKeyExpires] = useState(true);
   const [expiryDays, setExpiryDays] = useState('90');
@@ -42,8 +45,8 @@ const UserSettingsPage: FC = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
   const { data: apiKeys = [], isLoading: isLoadingKeys } = useSWR(
-    projectMetadata?.api_routes.list_api_keys_url && userProps && !isSessionExpiredModalOpen
-      ? [projectMetadata.api_routes.list_api_keys_url, userProps.username] 
+    routes?.list_api_keys_url && userProps && !isSessionExpiredModalOpen
+      ? [routes.list_api_keys_url, userProps.username] 
       : null,
     ([url]) => fetchApiKeys(url)
   );
@@ -61,7 +64,7 @@ const UserSettingsPage: FC = () => {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const handleChangePassword = async () => {
-    if (!projectMetadata?.api_routes.change_password_url) return;
+    if (!routes?.change_password_url) return;
     
     // Reset status
     setPasswordStatus(null);
@@ -79,7 +82,7 @@ const UserSettingsPage: FC = () => {
     }
 
     // Password length validation
-    const requirements = projectMetadata.password_requirements;
+    const requirements = managedProject?.password_requirements;
     if (requirements) {
       if (newPassword.length < requirements.min_length) {
         setPasswordStatus({ 
@@ -99,7 +102,7 @@ const UserSettingsPage: FC = () => {
 
     setIsChangingPassword(true);
     try {
-      await changePassword(projectMetadata.api_routes.change_password_url, {
+      await changePassword(routes.change_password_url, {
         old_password: currentPassword,
         new_password: newPassword,
       });
@@ -120,7 +123,7 @@ const UserSettingsPage: FC = () => {
   };
 
   const handleCreateApiKey = async () => {
-    if (!projectMetadata?.api_routes.create_api_key_url) return;
+    if (!routes?.create_api_key_url) return;
     
     setApiKeyError(null);
     if (!apiKeyDesc.trim()) {
@@ -130,7 +133,7 @@ const UserSettingsPage: FC = () => {
 
     setIsCreatingKey(true);
     try {
-      const response = await createApiKey(projectMetadata.api_routes.create_api_key_url, {
+      const response = await createApiKey(routes.create_api_key_url, {
         title: apiKeyDesc,
         expiry_minutes: apiKeyExpires ? (parseInt(expiryDays) || 0) * 24 * 60 : null,
       });
@@ -151,7 +154,9 @@ const UserSettingsPage: FC = () => {
       setApiKeyDesc('');
       
       // Refresh the list
-      mutate([projectMetadata.api_routes.list_api_keys_url, userProps?.username]);
+      if (routes.list_api_keys_url) {
+        mutate([routes.list_api_keys_url, userProps?.username]);
+      }
     } catch (error) {
       const message = error instanceof ApiError ? error.message : 'Failed to create API key';
       setApiKeyError(message);
@@ -161,18 +166,20 @@ const UserSettingsPage: FC = () => {
   };
 
   const handleDeleteKey = async (id: string) => {
-    if (!projectMetadata?.api_routes.revoke_api_key_url) return;
+    if (!routes?.revoke_api_key_url) return;
     setKeyToDelete(id);
     setIsDeleteModalOpen(true);
   };
 
   const confirmDeleteKey = async () => {
-    if (!keyToDelete || !projectMetadata?.api_routes.revoke_api_key_url) return;
+    if (!keyToDelete || !routes?.revoke_api_key_url) return;
     
-    const url = projectMetadata.api_routes.revoke_api_key_url.replace('{key_id}', keyToDelete);
+    const url = routes.revoke_api_key_url.replace('{key_id}', keyToDelete);
     try {
       await revokeApiKey(url);
-      mutate([projectMetadata.api_routes.list_api_keys_url, userProps?.username]);
+      if (routes.list_api_keys_url) {
+        mutate([routes.list_api_keys_url, userProps?.username]);
+      }
     } catch (error) {
       console.error('Failed to revoke API key:', error);
     } finally {
@@ -189,10 +196,10 @@ const UserSettingsPage: FC = () => {
     }
   };
 
-  if (!userProps && !isSessionExpiredModalOpen) {
+  if (!managedProject || (!userProps && !isSessionExpiredModalOpen)) {
     return <NotFoundPage />;
   }
-  
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
@@ -238,9 +245,9 @@ const UserSettingsPage: FC = () => {
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Label htmlFor="new-password">New Password</Label>
-                  {projectMetadata?.password_requirements && (
+                  {managedProject.password_requirements && (
                     <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                      ({projectMetadata.password_requirements.min_length}-{projectMetadata.password_requirements.max_length} chars)
+                      ({managedProject.password_requirements.min_length}-{managedProject.password_requirements.max_length} chars)
                     </span>
                   )}
                 </div>

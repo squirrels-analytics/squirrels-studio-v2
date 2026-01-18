@@ -17,3 +17,5 @@ export function hasElevatedAccess(
 ): boolean {
   return accessRank(userAccessLevel) >= accessRank(elevatedAccessLevel);
 }
+
+export const PROTECTED_PATHS = ['/explorer', '/user-settings', '/manage-users'];

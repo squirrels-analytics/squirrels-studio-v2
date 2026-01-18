@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
-import { ExportCsvButton } from '@/components/ExportCsvButton';
+import { ExportCsvButton } from '@/components/export-csv-button';
 import { PaginationContainer } from '@/components/pagination-container';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';

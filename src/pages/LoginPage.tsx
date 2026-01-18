@@ -3,10 +3,11 @@ import { Navigate } from 'react-router-dom';
 import { LogIn, FileText, ExternalLink, Copy, User, Lock, Globe, ArrowRight, Pencil, CheckCircle2, AlertCircle } from 'lucide-react';
 import useSWR from 'swr';
 import { ModeToggle } from '@/components/mode-toggle';
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/hooks/useApp';
 import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
 import { GlowCard } from '@/components/glow-card';
+import { isManagedAuthProject } from '@/lib/auth-strategy';
 import { fetchAuthProviders, login, logout, ApiError } from '@/lib/squirrels-api';
 import type { AuthProvidersResponse } from '@/types/auth-responses';
 import {
@@ -43,6 +44,7 @@ const LoginPage: React.FC = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!hostUrl || !projectMetadata) return;
+    if (!isManagedAuthProject(projectMetadata)) return;
     
     setError(null);
     setIsLoading(true);
@@ -71,7 +73,7 @@ const LoginPage: React.FC = () => {
   const handleGuestLogin = async () => {
     if (!hostUrl) return;
 
-    if (projectMetadata) {
+    if (projectMetadata && isManagedAuthProject(projectMetadata)) {
       try {
         await logout(projectMetadata.api_routes.logout_url);
       } catch (err) {
@@ -106,6 +108,7 @@ const LoginPage: React.FC = () => {
   const url = new URL(hostUrl);
   const hostDomain = url.origin;
   const mountedPath = url.pathname;
+  const showPasswordLogin = isManagedAuthProject(projectMetadata);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
@@ -200,61 +203,65 @@ const LoginPage: React.FC = () => {
                   <p className="text-sm font-medium">{error}</p>
                 </div>
               )}
-              <form onSubmit={handleLogin} className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-foreground/80 ml-1">
-                    Username
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <User className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              {showPasswordLogin && (
+                <form onSubmit={handleLogin} className="space-y-5">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground/80 ml-1">
+                      Username
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <User className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                      </div>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="block w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-foreground placeholder:text-muted-foreground/50 autofill:shadow-[inset_0_0_0_1000px_var(--background)] autofill:[-webkit-text-fill-color:var(--foreground)]"
+                        placeholder="admin"
+                        required
+                        autoComplete="username"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="block w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-foreground placeholder:text-muted-foreground/50 autofill:shadow-[inset_0_0_0_1000px_var(--background)] autofill:[-webkit-text-fill-color:var(--foreground)]"
-                      placeholder="admin"
-                      required
-                      autoComplete="username"
-                    />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-foreground/80 ml-1">
-                    Password
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-                      <Lock className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground/80 ml-1">
+                      Password
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <Lock className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                      </div>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="block w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-foreground placeholder:text-muted-foreground/50 autofill:shadow-[inset_0_0_0_1000px_var(--background)] autofill:[-webkit-text-fill-color:var(--foreground)]"
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                      />
                     </div>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-foreground placeholder:text-muted-foreground/50 autofill:shadow-[inset_0_0_0_1000px_var(--background)] autofill:[-webkit-text-fill-color:var(--foreground)]"
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                    />
                   </div>
-                </div>
-                <button
-                  type="submit"
-                  className="cursor-pointer w-full bg-primary hover:opacity-90 active:scale-[0.98] text-primary-foreground font-bold py-3 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 mt-2"
-                >
-                  Sign in
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
+                  <button
+                    type="submit"
+                    className="cursor-pointer w-full bg-primary hover:opacity-90 active:scale-[0.98] text-primary-foreground font-bold py-3 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 mt-2"
+                  >
+                    Sign in
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </form>
+              )}
 
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border"></div>
+              {showPasswordLogin && (
+                <div className="relative py-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase font-bold tracking-widest">
+                    <span className="bg-card px-4 text-muted-foreground/60"></span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase font-bold tracking-widest">
-                  <span className="bg-card px-4 text-muted-foreground/60"></span>
-                </div>
-              </div>
+              )}
 
               {providers && (
                 <div className="space-y-4">
@@ -275,7 +282,7 @@ const LoginPage: React.FC = () => {
                             className="w-5 h-5 object-contain" 
                           />
                         )}
-                        Sign in with {provider.label}
+                        Continue with {provider.label}
                       </a>
                     );
                   })}

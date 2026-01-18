@@ -12,10 +12,10 @@ import { downloadCsv } from '@/lib/utils';
 interface ExportCsvButtonProps {
   filenamePrefix: string;
   columns: Array<{ name: string }>;
-  currentRows: any[][];
+  currentRows: unknown[][];
   pageSize: number;
   currentPage: number;
-  onFetchAll: () => Promise<any[][]>;
+  onFetchAll: () => Promise<unknown[][]>;
   onLoadingChange?: (loading: boolean) => void;
   onError?: (error: string) => void;
   className?: string;

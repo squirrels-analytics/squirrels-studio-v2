@@ -132,7 +132,7 @@ export async function fetchQueryResult(
 ): Promise<DatasetResultResponse> {
   const url = projectMetadata.api_routes.get_query_result_url;
   
-  const body: Record<string, any> = {
+  const body: Record<string, unknown> = {
     x_sql_query: sql,
     x_orientation: 'rows',
     x_offset: pagination?.offset ?? 0,
@@ -228,7 +228,7 @@ export async function fetchCompiledModel(
 ): Promise<CompiledQueryModel> {
   const url = projectMetadata.api_routes.get_compiled_model_url.replace('{model_name}', modelName);
   
-  const body: Record<string, any> = {};
+  const body: Record<string, unknown> = {};
   Object.entries(paramOverrides).forEach(([key, value]) => {
     if (value === undefined || value === null) return;
     const values = normalizeSelectionValueForApi(value);

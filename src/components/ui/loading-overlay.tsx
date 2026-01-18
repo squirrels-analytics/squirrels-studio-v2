@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/hooks/useApp';
 
 export const LoadingOverlay: React.FC = () => {
   const { isLoading } = useApp();

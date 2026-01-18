@@ -1,5 +1,5 @@
 export interface CompiledQueryModel {
   language: 'sql' | 'python';
   definition: string;
-  placeholders: Record<string, any>;
+  placeholders: Record<string, unknown>;
 }

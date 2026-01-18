@@ -26,7 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/hooks/useApp';
+import { isManagedAuthProject } from '@/lib/auth-strategy';
 import { fetchUsers, fetchUserFields, addUser, updateUser, deleteUser, ApiError } from '@/lib/squirrels-api';
 import type { RegisteredUser } from '@/types/user-fields-response';
 import NotFoundPage from './NotFoundPage';
@@ -35,17 +36,19 @@ const ManageUsersPage: FC = () => {
   const appNavigate = useAppNavigate();
   const { projectMetadata, userProps, isSessionExpiredModalOpen } = useApp();
   const { mutate } = useSWRConfig();
+  const managedProject = isManagedAuthProject(projectMetadata) ? projectMetadata : null;
+  const routes = managedProject?.api_routes ?? null;
   
   const { data: userFieldsResponse } = useSWR(
-    projectMetadata?.api_routes.list_user_fields_url && userProps && !isSessionExpiredModalOpen
-      ? [projectMetadata.api_routes.list_user_fields_url, userProps.username] 
+    routes?.list_user_fields_url && userProps && !isSessionExpiredModalOpen
+      ? [routes.list_user_fields_url, userProps.username] 
       : null,
     ([url]) => fetchUserFields(url)
   );
 
   const { data: users = [], isLoading: isLoadingUsers } = useSWR(
-    projectMetadata?.api_routes.list_users_url && userProps && !isSessionExpiredModalOpen
-      ? [projectMetadata.api_routes.list_users_url, userProps.username] 
+    routes?.list_users_url && userProps && !isSessionExpiredModalOpen
+      ? [routes.list_users_url, userProps.username] 
       : null,
     ([url]) => fetchUsers(url)
   );
@@ -62,13 +65,13 @@ const ManageUsersPage: FC = () => {
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newAccessLevel, setNewAccessLevel] = useState<'admin' | 'member'>('member');
-  const [customFields, setCustomFields] = useState<Record<string, any>>({});
+  const [customFields, setCustomFields] = useState<Record<string, unknown>>({});
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleCreateClick = () => {
-    const initialCustom: Record<string, any> = {};
+    const initialCustom: Record<string, unknown> = {};
     let accessLevel: 'admin' | 'member' = 'member';
     if (userFieldsResponse) {
       userFieldsResponse.custom_fields.forEach(field => {
@@ -85,7 +88,7 @@ const ManageUsersPage: FC = () => {
   };
 
   const generatePassword = () => {
-    const minLength = projectMetadata?.password_requirements?.min_length;
+    const minLength = managedProject?.password_requirements?.min_length;
     if (!minLength) return;
 
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()';
@@ -111,10 +114,10 @@ const ManageUsersPage: FC = () => {
   };
 
   const handleCreateUser = async () => {
-    if (!projectMetadata?.api_routes.add_user_url) return;
+    if (!routes?.add_user_url) return;
     
     // Password validation
-    const requirements = projectMetadata.password_requirements;
+    const requirements = managedProject?.password_requirements;
     if (requirements) {
       if (newPassword.length < requirements.min_length) {
         setErrorMessage(`Password must be at least ${requirements.min_length} characters long`);
@@ -129,7 +132,7 @@ const ManageUsersPage: FC = () => {
     setIsProcessing(true);
     setErrorMessage(null);
     try {
-      await addUser(projectMetadata.api_routes.add_user_url, {
+      await addUser(routes.add_user_url, {
         username: newUsername,
         password: newPassword,
         access_level: newAccessLevel,
@@ -138,7 +141,9 @@ const ManageUsersPage: FC = () => {
       setIsCreateDialogOpen(false);
       setNewUsername('');
       setNewPassword('');
-      mutate([projectMetadata.api_routes.list_users_url, userProps?.username]);
+      if (routes.list_users_url) {
+        mutate([routes.list_users_url, userProps?.username]);
+      }
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : 'Failed to create user');
     } finally {
@@ -147,18 +152,20 @@ const ManageUsersPage: FC = () => {
   };
 
   const handleUpdateUser = async () => {
-    if (!projectMetadata?.api_routes.update_user_url || !selectedUser) return;
+    if (!routes?.update_user_url || !selectedUser) return;
     
     setIsProcessing(true);
     setErrorMessage(null);
     try {
-      const url = projectMetadata.api_routes.update_user_url.replace('{username}', selectedUser.username);
+      const url = routes.update_user_url.replace('{username}', selectedUser.username);
       await updateUser(url, {
         access_level: newAccessLevel,
         custom_fields: customFields,
       });
       setIsEditDialogOpen(false);
-      mutate([projectMetadata.api_routes.list_users_url, userProps?.username]);
+      if (routes.list_users_url) {
+        mutate([routes.list_users_url, userProps?.username]);
+      }
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : 'Failed to update user');
     } finally {
@@ -167,7 +174,7 @@ const ManageUsersPage: FC = () => {
   };
 
   const handleDeleteUser = async () => {
-    if (!projectMetadata?.api_routes.delete_user_url || !selectedUser) return;
+    if (!routes?.delete_user_url || !selectedUser) return;
     if (selectedUser.username === userProps?.username) {
       setErrorMessage("You cannot delete your own account");
       return;
@@ -176,10 +183,12 @@ const ManageUsersPage: FC = () => {
     setIsProcessing(true);
     setErrorMessage(null);
     try {
-      const url = projectMetadata.api_routes.delete_user_url.replace('{username}', selectedUser.username);
+      const url = routes.delete_user_url.replace('{username}', selectedUser.username);
       await deleteUser(url);
       setIsDeleteDialogOpen(false);
-      mutate([projectMetadata.api_routes.list_users_url, userProps?.username]);
+      if (routes.list_users_url) {
+        mutate([routes.list_users_url, userProps?.username]);
+      }
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : 'Failed to delete user');
     } finally {
@@ -187,9 +196,13 @@ const ManageUsersPage: FC = () => {
     }
   };
 
-  const handleCustomFieldChange = (name: string, value: any) => {
+  const handleCustomFieldChange = (name: string, value: unknown) => {
     setCustomFields(prev => ({ ...prev, [name]: value }));
   };
+
+  if (!managedProject) {
+    return <NotFoundPage />;
+  }
 
   if (userProps?.access_level !== 'admin' && !isSessionExpiredModalOpen) {
     return <NotFoundPage />;
@@ -305,9 +318,9 @@ const ManageUsersPage: FC = () => {
             <div className="space-y-2">
               <div className="flex gap-2">
                 <Label htmlFor="create-password">Password</Label>
-                {projectMetadata?.password_requirements && (
+                {managedProject?.password_requirements && (
                   <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                    ({projectMetadata.password_requirements.min_length}-{projectMetadata.password_requirements.max_length} chars)
+                    ({managedProject.password_requirements.min_length}-{managedProject.password_requirements.max_length} chars)
                   </span>
                 )}
               </div>

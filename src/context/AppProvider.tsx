@@ -1,7 +1,5 @@
 import React, {
-  createContext,
   useCallback,
-  useContext,
   useMemo,
   useRef,
   useState,
@@ -12,6 +10,9 @@ import type { ProjectMetadataResponse } from '@/types/project-metadata-response'
 import type { UserInfo } from '@/types/auth-responses';
 import type { ExploreEndpointsResponse } from '@/types/explore-endpoints-response';
 import { logout } from '@/lib/squirrels-api';
+import { isManagedAuthProject } from '@/lib/auth-strategy';
+import { PROTECTED_PATHS } from '@/lib/access';
+import { AppContext } from './AppContext';
 
 // Utils
 
@@ -38,29 +39,6 @@ function getCurrentPathnameFromHash(): string {
 
 // Context
 
-export const PROTECTED_PATHS = ['/explorer', '/user-settings', '/manage-users'];
-
-interface AppContextType {
-  hostUrl: string | null;
-  isHostUrlInQuery: boolean;
-  setHostUrl: (url: string | null) => void;
-  userProps: UserInfo | null;
-  isGuest: boolean;
-  sessionExpiry: number | null;
-  setRegisteredSession: (user: UserInfo, sessionExpiryTimestamp: number) => void;
-  setGuestSession: () => void;
-  isLoading: boolean;
-  setIsLoading: (isLoading: boolean) => void;
-  projectMetadata: ProjectMetadataResponse | null;
-  setProjectMetadata: (metadata: ProjectMetadataResponse | null) => void;
-  exploreEndpoints: ExploreEndpointsResponse | null;
-  setExploreEndpoints: (endpoints: ExploreEndpointsResponse | null) => void;
-  isSessionExpiredModalOpen: boolean;
-  setIsSessionExpiredModalOpen: (isOpen: boolean) => void;
-}
-
-const AppContext = createContext<AppContextType | undefined>(undefined);
-
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [searchParams] = useSearchParams();
   const isHostUrlInQuery = searchParams.has('hostUrl');
@@ -74,7 +52,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [userProps, setUserProps] = useState<UserInfo | null>(null);
   const [isGuest, setIsGuest] = useState<boolean>(false);
   const [sessionExpiry, setSessionExpiry] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  // Ref-counted loading to avoid overlapping async operations fighting each other.
+  const [loadingCount, setLoadingCount] = useState<number>(0);
+  const isLoading = loadingCount > 0;
   const [projectMetadata, setProjectMetadata] = useState<ProjectMetadataResponse | null>(null);
   const [exploreEndpoints, setExploreEndpoints] = useState<ExploreEndpointsResponse | null>(null);
   const [isSessionExpiredModalOpen, setIsSessionExpiredModalOpen] = useState<boolean>(false);
@@ -120,13 +100,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setUserProps(null);
       setSessionExpiry(null);
       setIsSessionExpiredModalOpen(true);
-      if (projectMetadata) {
+      if (projectMetadata && isManagedAuthProject(projectMetadata)) {
         void logout(projectMetadata.api_routes.logout_url).catch((err) => {
           console.error('Logout error during session expiry:', err);
         });
       }
     }, Math.max(remainingMs, 0));
   }, [clearSessionTimeout, projectMetadata, setGuestSession]);
+
+  const setIsLoading = useCallback((loading: boolean) => {
+    setLoadingCount((prev) => {
+      if (loading) return prev + 1;
+      return Math.max(0, prev - 1);
+    });
+  }, []);
 
   const value = useMemo(() => ({
     hostUrl,
@@ -154,6 +141,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setRegisteredSession,
     setGuestSession,
     isLoading,
+    setIsLoading,
     projectMetadata,
     exploreEndpoints,
     isSessionExpiredModalOpen
@@ -164,14 +152,4 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       {children}
     </AppContext.Provider>
   );
-};
-
-// Hooks
-
-export const useApp = () => {
-  const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
-  return context;
 };

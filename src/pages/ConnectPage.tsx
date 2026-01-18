@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import useSWRMutation from 'swr/mutation';
 import { ModeToggle } from '@/components/mode-toggle';
 import { GlowCard } from '@/components/glow-card';
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/hooks/useApp';
 import { ApiError, fetchProjectMetadata } from '@/lib/squirrels-api';
 import type { ProjectMetadataResponse } from '@/types/project-metadata-response';
 

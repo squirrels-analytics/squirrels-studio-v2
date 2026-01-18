@@ -5,7 +5,7 @@ import ExplorerPage from './pages/explorer/ExplorerPage';
 import UserSettingsPage from './pages/UserSettingsPage';
 import ManageUsersPage from './pages/ManageUsersPage';
 import NotFoundPage from './pages/NotFoundPage';
-import { AppProvider } from './context/AppContext';
+import { AppProvider } from './context/AppProvider';
 import { LoadingOverlay } from './components/ui/loading-overlay';
 import { ProjectInitializer } from './components/project-initializer';
 import { SessionTimeoutHandler } from './components/session-timeout-handler';

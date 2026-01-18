@@ -100,7 +100,7 @@ export const Sidebar: FC<SidebarProps> = ({
       <div className="p-6 space-y-6 border-b border-border">
         <div>
           <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Explore</h3>
-          <Select value={exploreType} onValueChange={(val: any) => setExploreType(val)}>
+          <Select value={exploreType} onValueChange={(val: ExplorerOptionType) => setExploreType(val)}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select type" />
             </SelectTrigger>

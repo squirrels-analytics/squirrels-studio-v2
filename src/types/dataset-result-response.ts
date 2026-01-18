@@ -8,9 +8,9 @@ export interface DatasetResultResponse {
   };
   total_num_rows: number;
   data_details: {
-    orientation: string;
-    [key: string]: any;
+    orientation: "rows";
+    [key: string]: unknown;
   };
-  data: any[];
+  data: unknown[][];
 }
 

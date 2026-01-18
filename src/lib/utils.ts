@@ -12,7 +12,7 @@ export function joinUrl(baseUrl: string, path: string): string {
 /**
  * Utility to download data as a CSV file
  */
-export function downloadCsv(data: any[][], filename: string, headers: string[]) {
+export function downloadCsv(data: unknown[][], filename: string, headers: string[]) {
   if (data.length === 0) return;
 
   const csvRows = [

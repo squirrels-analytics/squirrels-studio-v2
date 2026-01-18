@@ -1,11 +1,11 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import useSWR from 'swr';
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/hooks/useApp';
 import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { fetchUserSession } from '@/lib/squirrels-api';
 import type { UserSessionResponse } from '@/types/auth-responses';
-import { PROTECTED_PATHS } from '@/context/AppContext';
+import { PROTECTED_PATHS } from '@/lib/access';
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ export const SessionTimeoutHandler: React.FC = () => {
     isGuest,
     setRegisteredSession,
     setGuestSession,
+    setIsLoading,
     isSessionExpiredModalOpen, 
     setIsSessionExpiredModalOpen
   } = useApp();
@@ -41,7 +42,10 @@ export const SessionTimeoutHandler: React.FC = () => {
 
   useSWR<UserSessionResponse>(
     shouldFetchSession ? projectMetadata!.api_routes.get_user_session_url : null,
-    (url: string) => fetchUserSession(url),
+    async (url: string) => {
+      setIsLoading(true);
+      return fetchUserSession(url).finally(() => setIsLoading(false));
+    },
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,

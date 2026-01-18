@@ -2,10 +2,10 @@ import { useState, useMemo, useCallback, lazy, Suspense, type FC, useRef } from 
 import { Navigate } from 'react-router-dom';
 import { TableIcon, LayoutDashboardIcon, Info, Loader2 } from 'lucide-react';
 import useSWR from 'swr';
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/hooks/useApp';
 import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
-import { ExportCsvButton } from '@/components/ExportCsvButton';
+import { ExportCsvButton } from '@/components/export-csv-button';
 import { PaginationContainer } from '@/components/pagination-container';
 import {
   Dialog,
@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { fetchDataCatalog, fetchAssetParameters, fetchAssetResults, fetchProjectParameters, logout, type SelectionValue } from '@/lib/squirrels-api';
+import { isManagedAuthProject } from '@/lib/auth-strategy';
 import NotFoundPage from '../NotFoundPage';
 import { SqlPlayground } from './SqlPlayground';
 
@@ -44,8 +45,10 @@ const ExplorerPage: FC = () => {
   const appNavigate = useAppNavigate();
   const { 
     hostUrl, 
+    isHostUrlInQuery,
     projectMetadata, 
     userProps, 
+    isGuest,
     setGuestSession, 
     isLoading, 
     setIsLoading,
@@ -56,7 +59,7 @@ const ExplorerPage: FC = () => {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    if (projectMetadata) {
+    if (projectMetadata && isManagedAuthProject(projectMetadata)) {
       try {
         await logout(projectMetadata.api_routes.logout_url);
       } catch (err) {
@@ -82,16 +85,26 @@ const ExplorerPage: FC = () => {
   const [pageSize, setPageSize] = useState(1000);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
+  const isAuthRequired = projectMetadata?.auth_type === 'required';
+  const canAccessProjectApis =
+    !!projectMetadata &&
+    !isLoggingOut &&
+    !isSessionExpiredModalOpen &&
+    (!isAuthRequired || !!userProps);
+
   // Fetch Data Catalog
-  const { data: catalog } = useSWR<DataCatalogResponse>(
-    projectMetadata && !isLoggingOut && !isSessionExpiredModalOpen 
-      ? [projectMetadata.api_routes.get_data_catalog_url, userProps?.username] 
+  const { data: catalog, isLoading: isCatalogLoading } = useSWR<DataCatalogResponse>(
+    canAccessProjectApis
+      ? [projectMetadata.api_routes.get_data_catalog_url, userProps?.username]
       : null,
-    ([url]) => fetchDataCatalog(url)
+    async ([url]) => {
+      setIsLoading(true);
+      return fetchDataCatalog(url).finally(() => setIsLoading(false));
+    }
   );
 
-  const datasets = catalog?.datasets ?? [];
-  const dashboards = catalog?.dashboards ?? [];
+  const datasets = useMemo(() => catalog?.datasets ?? [], [catalog?.datasets]);
+  const dashboards = useMemo(() => catalog?.dashboards ?? [], [catalog?.dashboards]);
 
   const activeAssetName = useMemo(() => {
     if (exploreType === 'Datasets') {
@@ -108,7 +121,7 @@ const ExplorerPage: FC = () => {
 
   // Fetch Parameters for Active Asset
   const effectiveAssetName = exploreType === 'SqlPlayground' || exploreType === 'DataLineage' || activeAssetName;
-  const paramKey = projectMetadata && effectiveAssetName && !isLoggingOut && !isSessionExpiredModalOpen
+  const paramKey = canAccessProjectApis && effectiveAssetName
     ? [projectMetadata, exploreType, activeAssetName, userProps?.username, 'params']
     : null;
 
@@ -265,13 +278,33 @@ const ExplorerPage: FC = () => {
     return <Navigate to="/" replace />;
   }
 
-  if (projectMetadata?.auth_type === 'required' && !userProps && !isSessionExpiredModalOpen) {
+  // Session restoration (e.g. page refresh on /explorer) is async; show a loader instead
+  // of briefly rendering a 404 while we validate the session.
+  if (isAuthRequired && !userProps && !isGuest && !isSessionExpiredModalOpen) {
+    // Global LoadingOverlay will be driven by SessionTimeoutHandler.
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  // Auth required but no session (e.g. expired / unauthorized): send the user back to login.
+  if (isAuthRequired && !userProps && isGuest && !isSessionExpiredModalOpen) {
+    const to = isHostUrlInQuery ? `/login?hostUrl=${encodeURIComponent(hostUrl!)}` : '/login';
+    return <Navigate to={to} replace />;
+  }
+
+  if (canAccessProjectApis && isCatalogLoading) {
+    // Global LoadingOverlay will be driven by the catalog SWR fetcher above.
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  // Defensive: if we can’t load required data for rendering the explorer, show a 404.
+  if (!catalog && canAccessProjectApis && !isCatalogLoading) {
     return <NotFoundPage />;
   }
   
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col h-screen overflow-hidden">
       <Header 
+        authStrategy={projectMetadata?.auth_strategy}
         projectLabel={projectMetadata?.label || ''} 
         projectVersion={projectMetadata?.version || ''} 
         username={userProps?.username || null} 

@@ -1,41 +1,62 @@
-export interface ProjectMetadataResponse {
+interface BaseProjectMetadata {
   name: string;    // Ex. "my_project"
   name_for_api: string; // Ex. "my-project"
   version: string; // Ex. "1"
   label: string;   // Ex. "My Project"
   description: string;
+  elevated_access_level: "admin" | "member" | "guest";
+}
+
+interface BaseApiRoutes {
+  get_data_catalog_url: string;
+  get_parameters_url: string;
+  get_dataset_parameters_url: string;
+  get_dataset_results_url: string;
+  get_dashboard_parameters_url: string;
+  get_dashboard_results_url: string;
+  trigger_build_url: string;
+  get_query_result_url: string;
+  get_compiled_model_url: string;
+}
+
+interface ManagedAuthApiRoutes extends BaseApiRoutes {
+  get_user_session_url: string;
+  list_providers_url: string;
+  login_url: string;
+  logout_url: string;
+  change_password_url: string;
+  list_api_keys_url: string;
+  create_api_key_url: string;
+  revoke_api_key_url: string;
+  list_user_fields_url: string;
+  list_users_url: string;
+  add_user_url: string;
+  update_user_url: string;
+  delete_user_url: string;
+}
+
+interface ExternalAuthApiRoutes extends BaseApiRoutes {
+  get_user_session_url: string;
+  list_providers_url: string;
+}
+
+interface ManagedAuthProjectMetadata extends BaseProjectMetadata {
+  auth_strategy?: "managed";
   auth_type?: "optional" | "required";
   password_requirements: {
     min_length: number;
     max_length: number;
   };
-  elevated_access_level: "admin" | "member" | "guest";
-  api_routes: {
-    get_data_catalog_url: string;
-    get_parameters_url: string;
-    get_dataset_parameters_url: string;
-    get_dataset_results_url: string;
-    get_dashboard_parameters_url: string;
-    get_dashboard_results_url: string;
-    trigger_build_url: string;
-    get_query_result_url: string;
-    get_compiled_model_url: string;
-    get_user_session_url: string;
-    login_url: string;
-    list_providers_url: string;
-    login_with_provider_url: string;
-    logout_url: string;
-    change_password_url: string;
-    list_api_keys_url: string;
-    create_api_key_url: string;
-    revoke_api_key_url: string;
-    list_user_fields_url: string;
-    list_users_url: string;
-    add_user_url: string;
-    update_user_url: string;
-    delete_user_url: string;
-  };
+  api_routes: ManagedAuthApiRoutes;
 }
+
+interface ExternalAuthProjectMetadata extends BaseProjectMetadata {
+  auth_strategy: "external";
+  auth_type: "required";
+  api_routes: ExternalAuthApiRoutes;
+}
+
+export type ProjectMetadataResponse = ManagedAuthProjectMetadata | ExternalAuthProjectMetadata;
 
 // Example response:
 /*
@@ -60,7 +81,6 @@ export interface ProjectMetadataResponse {
     "get_user_session_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/user-session",
     "login_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/login",
     "list_providers_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/providers",
-    "login_with_provider_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/providers/{provider_name}/login",
     "logout_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/logout",
     "change_password_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/password",
     "list_api_keys_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/api-keys",

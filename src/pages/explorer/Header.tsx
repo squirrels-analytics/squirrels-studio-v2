@@ -3,6 +3,7 @@ import { Settings, User, LogOut, Database as DbIcon } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
+import type { ProjectMetadataResponse } from '@/types/project-metadata-response';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 
 interface HeaderProps {
+  authStrategy?: ProjectMetadataResponse['auth_strategy'];
   projectLabel: string;
   projectVersion: string;
   username: string | null;
@@ -25,6 +27,7 @@ interface HeaderProps {
 }
 
 export const Header: FC<HeaderProps> = ({
+  authStrategy,
   projectLabel,
   projectVersion,
   username,
@@ -36,6 +39,7 @@ export const Header: FC<HeaderProps> = ({
   const appNavigate = useAppNavigate();
   const isGuest = !username || username === 'guest';
   const isAdmin = accessLevel === 'admin';
+  const isExternalAuth = authStrategy === 'external';
 
   return (
     <header className="h-16 bg-background border-b border-border flex items-center justify-between px-4 sticky top-0 z-30 shadow-sm">
@@ -89,7 +93,7 @@ export const Header: FC<HeaderProps> = ({
                 />
               </div>
               <DropdownMenuSeparator />
-              {(isAdmin || !isGuest) && (
+              {!isGuest && !isExternalAuth && (
                 <>
                   <DropdownMenuLabel>Navigation</DropdownMenuLabel>
                   <DropdownMenuGroup>

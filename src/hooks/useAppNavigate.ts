@@ -1,5 +1,5 @@
 import { useNavigate, type NavigateOptions, type To } from 'react-router-dom';
-import { useApp } from '@/context/AppContext';
+import { useApp } from '@/hooks/useApp';
 import { useCallback } from 'react';
 
 export const useAppNavigate = () => {

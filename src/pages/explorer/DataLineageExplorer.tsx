@@ -81,7 +81,7 @@ const DataLineageExplorer: FC<DataLineageExplorerProps> = ({
       if (nodeMap.has(id)) return nodeMap.get(id)!;
 
       let label = name;
-      let modelType: any = undefined;
+      let modelType: 'source' | 'dbview' | 'federate' | 'seed' | 'build' | undefined = undefined;
 
       if (type === 'model') {
         const model = catalog.models?.find(m => m.name === name);
