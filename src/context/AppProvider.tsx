@@ -10,7 +10,6 @@ import type { ProjectMetadataResponse } from '@/types/project-metadata-response'
 import type { UserInfo } from '@/types/auth-responses';
 import type { ExploreEndpointsResponse } from '@/types/explore-endpoints-response';
 import { logout } from '@/lib/squirrels-api';
-import { isManagedAuthProject } from '@/lib/auth-strategy';
 import { PROTECTED_PATHS } from '@/lib/access';
 import { AppContext } from './AppContext';
 
@@ -100,7 +99,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setUserProps(null);
       setSessionExpiry(null);
       setIsSessionExpiredModalOpen(true);
-      if (projectMetadata && isManagedAuthProject(projectMetadata)) {
+      if (projectMetadata) {
         void logout(projectMetadata.api_routes.logout_url).catch((err) => {
           console.error('Logout error during session expiry:', err);
         });

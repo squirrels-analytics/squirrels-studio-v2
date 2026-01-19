@@ -22,7 +22,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { fetchDataCatalog, fetchAssetParameters, fetchAssetResults, fetchProjectParameters, logout, type SelectionValue } from '@/lib/squirrels-api';
-import { isManagedAuthProject } from '@/lib/auth-strategy';
 import NotFoundPage from '../NotFoundPage';
 import { SqlPlayground } from './SqlPlayground';
 
@@ -59,7 +58,7 @@ const ExplorerPage: FC = () => {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    if (projectMetadata && isManagedAuthProject(projectMetadata)) {
+    if (projectMetadata) {
       try {
         await logout(projectMetadata.api_routes.logout_url);
       } catch (err) {

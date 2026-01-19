@@ -38,6 +38,7 @@ interface ManagedAuthApiRoutes extends BaseApiRoutes {
 interface ExternalAuthApiRoutes extends BaseApiRoutes {
   get_user_session_url: string;
   list_providers_url: string;
+  logout_url: string;
 }
 
 interface ManagedAuthProjectMetadata extends BaseProjectMetadata {

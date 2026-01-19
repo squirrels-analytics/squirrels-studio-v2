@@ -73,7 +73,7 @@ const LoginPage: React.FC = () => {
   const handleGuestLogin = async () => {
     if (!hostUrl) return;
 
-    if (projectMetadata && isManagedAuthProject(projectMetadata)) {
+    if (projectMetadata) {
       try {
         await logout(projectMetadata.api_routes.logout_url);
       } catch (err) {
