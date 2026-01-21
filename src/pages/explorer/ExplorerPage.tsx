@@ -21,7 +21,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { fetchDataCatalog, fetchAssetParameters, fetchAssetResults, fetchProjectParameters, logout, type SelectionValue } from '@/lib/squirrels-api';
+import { 
+  fetchDataCatalog, fetchAssetParameters, fetchAssetResults, fetchProjectParameters, logout, 
+  type SelectionValue, type ConfigurableValues 
+} from '@/lib/squirrels-api';
 import NotFoundPage from '../NotFoundPage';
 import { SqlPlayground } from './SqlPlayground';
 
@@ -83,6 +86,8 @@ const ExplorerPage: FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(1000);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const lastCatalogUrlRef = useRef<string | null>(null);
+  const [configurableValues, setConfigurableValues] = useState<ConfigurableValues>({});
 
   const isAuthRequired = projectMetadata?.auth_type === 'required';
   const canAccessProjectApis =
@@ -98,7 +103,23 @@ const ExplorerPage: FC = () => {
       : null,
     async ([url]) => {
       setIsLoading(true);
-      return fetchDataCatalog(url).finally(() => setIsLoading(false));
+      try {
+        const data = await fetchDataCatalog(url);
+        setConfigurableValues((prev) => {
+          const isNewProject = lastCatalogUrlRef.current !== url;
+          const next: ConfigurableValues = isNewProject ? {} : { ...prev };
+          (data.configurables ?? []).forEach((c) => {
+            if (isNewProject || next[c.name] === undefined) {
+              next[c.name] = c.default;
+            }
+          });
+          return next;
+        });
+        lastCatalogUrlRef.current = url;
+        return data;
+      } finally {
+        setIsLoading(false);
+      }
     }
   );
 
@@ -189,7 +210,8 @@ const ExplorerPage: FC = () => {
         exploreType,
         activeAssetName,
         currentParams,
-        exploreType === 'Datasets' ? { offset: (page - 1) * pageSize, limit: pageSize } : undefined
+        exploreType === 'Datasets' ? { offset: (page - 1) * pageSize, limit: pageSize } : undefined,
+        configurableValues
       );
       
       if (exploreType === 'Datasets') {
@@ -230,6 +252,7 @@ const ExplorerPage: FC = () => {
     appliedParamOverrides,
     pageSize,
     dashboardResult,
+    configurableValues,
     setIsLoading
   ]);
 
@@ -263,7 +286,8 @@ const ExplorerPage: FC = () => {
       exploreType,
       activeAssetName,
       appliedParamOverrides,
-      { offset: 0, limit: datasetResult.total_num_rows }
+      { offset: 0, limit: datasetResult.total_num_rows },
+      configurableValues
     );
     
     if (typeof result === 'object' && result !== null && 'data' in result) {
@@ -311,6 +335,11 @@ const ExplorerPage: FC = () => {
         onLogout={handleLogout} 
         pageSize={pageSize}
         onPageSizeChange={setPageSize}
+        configurables={catalog?.configurables ?? []}
+        configurableValues={configurableValues}
+        onConfigurableChange={(name, value) =>
+          setConfigurableValues((prev) => ({ ...prev, [name]: value }))
+        }
       />
       
       <div className="flex flex-1 overflow-hidden">
@@ -378,6 +407,7 @@ const ExplorerPage: FC = () => {
               projectMetadata={projectMetadata!} 
               paramOverrides={paramOverrides}
               pageSize={pageSize}
+              configurables={configurableValues}
             />
           ) : exploreType === 'DataLineage' ? (
             <Suspense fallback={
@@ -392,6 +422,7 @@ const ExplorerPage: FC = () => {
                 catalog={catalog!}
                 projectMetadata={projectMetadata!}
                 paramOverrides={paramOverrides}
+                configurables={configurableValues}
               />
             </Suspense>
           ) : !hasData ? (

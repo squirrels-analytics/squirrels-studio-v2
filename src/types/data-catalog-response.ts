@@ -143,7 +143,7 @@ interface LineageItem {
   target: LineageNode;
 }
 
-interface ConfigurablesItem {
+export interface ConfigurablesItem {
   name: string;
   label: string;
   default: string;

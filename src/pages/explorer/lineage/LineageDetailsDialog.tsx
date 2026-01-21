@@ -7,7 +7,7 @@ import {
   DialogTitle 
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { fetchCompiledModel, type SelectionValue } from '@/lib/squirrels-api';
+import { fetchCompiledModel, type SelectionValue, type ConfigurableValues } from '@/lib/squirrels-api';
 import type { 
   DataCatalogResponse, 
   DataModelItem, 
@@ -31,6 +31,7 @@ interface LineageDetailsDialogProps {
   catalog: DataCatalogResponse;
   projectMetadata: ProjectMetadataResponse;
   paramOverrides: Record<string, SelectionValue>;
+  configurables: ConfigurableValues;
 }
 
 export const LineageDetailsDialog: FC<LineageDetailsDialogProps> = ({
@@ -39,7 +40,8 @@ export const LineageDetailsDialog: FC<LineageDetailsDialogProps> = ({
   node,
   catalog,
   projectMetadata,
-  paramOverrides
+  paramOverrides,
+  configurables
 }) => {
   const [activeTab, setActiveTab] = useState<'definition' | 'placeholders'>('definition');
 
@@ -76,7 +78,7 @@ export const LineageDetailsDialog: FC<LineageDetailsDialogProps> = ({
     error: compiledModelError,
   } = useSWR<CompiledQueryModel>(
     compiledModelKey,
-    () => fetchCompiledModel(projectMetadata, model!.name, paramOverrides),
+    () => fetchCompiledModel(projectMetadata, model!.name, paramOverrides, configurables),
   );
 
   if (!node || !asset) return null;

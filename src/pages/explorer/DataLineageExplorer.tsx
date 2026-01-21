@@ -18,12 +18,13 @@ import LineageNodeComponent, { type LineageNode } from './lineage/LineageNode';
 import { LineageDetailsDialog } from './lineage/LineageDetailsDialog';
 import type { DataCatalogResponse } from '@/types/data-catalog-response';
 import type { ProjectMetadataResponse } from '@/types/project-metadata-response';
-import type { SelectionValue } from '@/lib/squirrels-api';
+import type { SelectionValue, ConfigurableValues } from '@/lib/squirrels-api';
 
 interface DataLineageExplorerProps {
   catalog: DataCatalogResponse;
   projectMetadata: ProjectMetadataResponse;
   paramOverrides: Record<string, SelectionValue>;
+  configurables: ConfigurableValues;
 }
 
 const nodeTypes = {
@@ -66,7 +67,8 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
 const DataLineageExplorer: FC<DataLineageExplorerProps> = ({
   catalog,
   projectMetadata,
-  paramOverrides
+  paramOverrides,
+  configurables
 }) => {
   const [detailsNode, setDetailsNode] = useState<{ id: string; type: 'model' | 'dataset' | 'dashboard'; name: string } | null>(null);
 
@@ -238,6 +240,7 @@ const DataLineageExplorer: FC<DataLineageExplorerProps> = ({
         catalog={catalog}
         projectMetadata={projectMetadata}
         paramOverrides={paramOverrides}
+        configurables={configurables}
       />
     </div>
   );

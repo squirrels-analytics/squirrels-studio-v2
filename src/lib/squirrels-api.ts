@@ -10,6 +10,8 @@ import type { UserFieldsResponse, RegisteredUser, AddUserModel, UpdateUserModel 
 import type { ExplorerOptionType } from '@/types/core';
 import type { CompiledQueryModel } from '@/types/compiled-query-model';
 
+export type ConfigurableValues = Record<string, string>;
+
 export class ApiError extends Error {
   status?: number;
   constructor(message: string, status?: number) {
@@ -35,6 +37,22 @@ async function fetchWithCredentials(url: string, options: RequestInit = {}): Pro
 async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const response = await fetchWithCredentials(url, options);
   return response.json();
+}
+
+function toKebabCaseHeaderSegment(name: string): string {
+  return name.trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-');
+}
+
+function buildConfigHeaders(configurables?: ConfigurableValues): Record<string, string> {
+  if (!configurables) return {};
+  const headers: Record<string, string> = {};
+  Object.entries(configurables).forEach(([name, value]) => {
+    const seg = toKebabCaseHeaderSegment(name);
+    if (!seg) return;
+    headers[`x-config-${seg}`] = String(value);
+  });
+  return headers;
 }
 
 export async function logout(logoutUrl: string): Promise<void> {
@@ -128,7 +146,8 @@ export async function fetchQueryResult(
   projectMetadata: ProjectMetadataResponse,
   sql: string,
   paramOverrides: Record<string, SelectionValue>,
-  pagination?: { offset: number; limit: number }
+  pagination?: { offset: number; limit: number },
+  configurables?: ConfigurableValues
 ): Promise<DatasetResultResponse> {
   const url = projectMetadata.api_routes.get_query_result_url;
   
@@ -151,7 +170,7 @@ export async function fetchQueryResult(
 
   return fetchJson<DatasetResultResponse>(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...buildConfigHeaders(configurables) },
     body: JSON.stringify(body),
   });
 }
@@ -184,7 +203,8 @@ export async function fetchAssetResults(
   exploreType: ExplorerOptionType,
   assetName: string,
   paramOverrides: Record<string, SelectionValue>,
-  pagination?: { offset: number; limit: number }
+  pagination?: { offset: number; limit: number },
+  configurables?: ConfigurableValues
 ): Promise<DatasetResultResponse | Blob | string> {
   const url = exploreType === 'Datasets'
     ? projectMetadata.api_routes.get_dataset_results_url.replace('{dataset_name}', assetName)
@@ -209,7 +229,9 @@ export async function fetchAssetResults(
   const queryString = queryParams.toString();
   const fullUrl = url + (queryString ? '?' + queryString : '');
   
-  const response = await fetchWithCredentials(fullUrl);
+  const response = await fetchWithCredentials(fullUrl, {
+    headers: buildConfigHeaders(configurables),
+  });
   const contentType = response.headers.get('content-type');
   
   if (contentType?.includes('application/json')) {
@@ -224,7 +246,8 @@ export async function fetchAssetResults(
 export async function fetchCompiledModel(
   projectMetadata: ProjectMetadataResponse,
   modelName: string,
-  paramOverrides: Record<string, SelectionValue>
+  paramOverrides: Record<string, SelectionValue>,
+  configurables?: ConfigurableValues
 ): Promise<CompiledQueryModel> {
   const url = projectMetadata.api_routes.get_compiled_model_url.replace('{model_name}', modelName);
   
@@ -241,7 +264,7 @@ export async function fetchCompiledModel(
 
   return fetchJson<CompiledQueryModel>(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...buildConfigHeaders(configurables) },
     body: JSON.stringify(body),
   });
 }

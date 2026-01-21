@@ -15,7 +15,7 @@ import { ExportCsvButton } from '@/components/export-csv-button';
 import { PaginationContainer } from '@/components/pagination-container';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { fetchQueryResult, type SelectionValue } from '@/lib/squirrels-api';
+import { fetchQueryResult, type SelectionValue, type ConfigurableValues } from '@/lib/squirrels-api';
 import type { DataModelItem, ConnectionItem } from '@/types/data-catalog-response';
 import type { ProjectMetadataResponse } from '@/types/project-metadata-response';
 import type { DatasetResultResponse } from '@/types/dataset-result-response';
@@ -28,6 +28,7 @@ interface SqlPlaygroundProps {
   projectMetadata: ProjectMetadataResponse;
   paramOverrides: Record<string, SelectionValue>;
   pageSize: number;
+  configurables: ConfigurableValues;
 }
 
 export const SqlPlayground: FC<SqlPlaygroundProps> = ({
@@ -36,6 +37,7 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
   projectMetadata,
   paramOverrides,
   pageSize,
+  configurables,
 }) => {
   const { resolvedTheme } = useTheme();
   const [sqlQuery, setSqlQuery] = useState('');
@@ -81,7 +83,8 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
         projectMetadata,
         currentSqlQuery,
         currentParamOverrides,
-        { offset: (page - 1) * pageSize, limit: pageSize }
+        { offset: (page - 1) * pageSize, limit: pageSize },
+        configurables
       );
       setResult(res);
       setCurrentPage(page);
@@ -99,7 +102,7 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [projectMetadata, sqlQuery, appliedSqlQuery, paramOverrides, appliedParamOverrides, pageSize]);
+  }, [projectMetadata, sqlQuery, appliedSqlQuery, paramOverrides, appliedParamOverrides, pageSize, configurables]);
 
   const handleFetchAllRows = async () => {
     if (!result) {
@@ -110,7 +113,8 @@ export const SqlPlayground: FC<SqlPlaygroundProps> = ({
       projectMetadata,
       appliedSqlQuery,
       appliedParamOverrides,
-      { offset: 0, limit: result.total_num_rows }
+      { offset: 0, limit: result.total_num_rows },
+      configurables
     );
     
     return res.data;
