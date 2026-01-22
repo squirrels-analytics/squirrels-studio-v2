@@ -15,15 +15,29 @@ import { AppContext } from './AppContext';
 
 // Utils
 
-function getHostUrl(searchParams: URLSearchParams): string | null {
-  const queryHostUrl = searchParams.get('hostUrl');
-  if (queryHostUrl) {
-    return queryHostUrl;
+function getOrigin(searchParams: URLSearchParams): string | null {
+  const queryOrigin = searchParams.get('origin');
+  if (queryOrigin !== null) {
+    return queryOrigin;
   }
   
-  const defaultHostUrl = window.DEFAULT_HOSTURL;
-  if (defaultHostUrl && typeof defaultHostUrl === 'string' && defaultHostUrl.trim()) {
-    return defaultHostUrl.trim();
+  const defaultOrigin = window.DEFAULT_ORIGIN;
+  if (defaultOrigin && typeof defaultOrigin === 'string') {
+    return defaultOrigin.trim();
+  }
+  
+  return null;
+}
+
+function getMountPath(searchParams: URLSearchParams): string | null {
+  const queryMountPath = searchParams.get('mountPath');
+  if (queryMountPath !== null) {
+    return queryMountPath;
+  }
+  
+  const defaultMountPath = window.DEFAULT_MOUNTPATH;
+  if (defaultMountPath && typeof defaultMountPath === 'string') {
+    return defaultMountPath.trim();
   }
   
   return null;
@@ -40,13 +54,22 @@ function getCurrentPathnameFromHash(): string {
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [searchParams] = useSearchParams();
-  const isHostUrlInQuery = searchParams.has('hostUrl');
+  const isConnectionInQuery = searchParams.has('origin') || searchParams.has('mountPath');
 
-  const [hostUrl, setHostUrl] = useState<string | null>(() => {
-    // Initialize from URL params if available
+  const [origin, setOrigin] = useState<string | null>(() => {
     const searchParams = new URLSearchParams(window.location.hash.split('?')[1]);
-    return getHostUrl(searchParams);
+    return getOrigin(searchParams);
   });
+
+  const [mountPath, setMountPath] = useState<string | null>(() => {
+    const searchParams = new URLSearchParams(window.location.hash.split('?')[1]);
+    return getMountPath(searchParams);
+  });
+
+  const setConnection = useCallback((newOrigin: string | null, newMountPath: string | null) => {
+    setOrigin(newOrigin);
+    setMountPath(newMountPath);
+  }, []);
   
   const [userProps, setUserProps] = useState<UserInfo | null>(null);
   const [isGuest, setIsGuest] = useState<boolean>(false);
@@ -115,9 +138,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   const value = useMemo(() => ({
-    hostUrl,
-    isHostUrlInQuery,
-    setHostUrl,
+    origin,
+    mountPath,
+    isConnectionInQuery,
+    setConnection,
     userProps,
     isGuest,
     sessionExpiry,
@@ -132,8 +156,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     isSessionExpiredModalOpen,
     setIsSessionExpiredModalOpen
   }), [
-    hostUrl,
-    isHostUrlInQuery,
+    origin,
+    mountPath,
+    isConnectionInQuery,
+    setConnection,
     userProps,
     isGuest,
     sessionExpiry,

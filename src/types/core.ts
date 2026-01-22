@@ -1,6 +1,7 @@
 declare global {
   interface Window {
-    DEFAULT_HOSTURL?: string;
+    DEFAULT_ORIGIN?: string;
+    DEFAULT_MOUNTPATH?: string;
   }
 }
 

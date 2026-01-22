@@ -8,7 +8,7 @@ import { useAppNavigate } from '@/hooks/useAppNavigate';
 import { Button } from '@/components/ui/button';
 import { GlowCard } from '@/components/glow-card';
 import { isManagedAuthProject } from '@/lib/auth-strategy';
-import { fetchAuthProviders, login, logout, ApiError } from '@/lib/squirrels-api';
+import { fetchAuthProviders, login, logout, ApiError, prefixOrigin } from '@/lib/squirrels-api';
 import type { AuthProvidersResponse } from '@/types/auth-responses';
 import {
   Dialog,
@@ -27,7 +27,7 @@ import {
 const LoginPage: React.FC = () => {
   const appNavigate = useAppNavigate();
   const { 
-    hostUrl, isHostUrlInQuery, projectMetadata, exploreEndpoints, setHostUrl, setProjectMetadata, setExploreEndpoints, 
+    origin, mountPath, isConnectionInQuery, projectMetadata, exploreEndpoints, setConnection, setProjectMetadata, setExploreEndpoints, 
     setRegisteredSession, setGuestSession, setIsLoading 
   } = useApp();
   const [activeTab, setActiveTab] = useState<'signin' | 'docs'>('signin');
@@ -43,7 +43,7 @@ const LoginPage: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hostUrl || !projectMetadata) return;
+    if (!mountPath || !projectMetadata) return;
     if (!isManagedAuthProject(projectMetadata)) return;
     
     setError(null);
@@ -71,7 +71,7 @@ const LoginPage: React.FC = () => {
   };
 
   const handleGuestLogin = async () => {
-    if (!hostUrl) return;
+    if (!mountPath) return;
 
     if (projectMetadata) {
       try {
@@ -85,29 +85,34 @@ const LoginPage: React.FC = () => {
     appNavigate('/explorer');
   };
 
-  const copyMcpUrl = () => {
-    if (!exploreEndpoints?.mcp_server_url) return;
-    navigator.clipboard.writeText(exploreEndpoints.mcp_server_url);
-    setIsMcpModalOpen(true);
-  };
-
   const getRedirectUrl = () => {
     const url = new URL(window.location.origin + window.location.pathname);
-    if (isHostUrlInQuery) {
-      url.hash = `#/explorer?hostUrl=${encodeURIComponent(hostUrl || '')}`;
+    if (isConnectionInQuery && mountPath) {
+      const params = new URLSearchParams();
+      if (origin) params.set('origin', origin);
+      params.set('mountPath', mountPath);
+      url.hash = `#/explorer?${params.toString()}`;
     } else {
       url.hash = '#/explorer';
     }
     return url.toString();
   };
 
-  if (!hostUrl) {
+  const getAbsoluteUrl = (url: string) => {
+    if (origin) return url;
+    return prefixOrigin(window.location.origin, url);
+  };
+
+  const copyMcpUrl = () => {
+    if (!exploreEndpoints?.mcp_server_url) return;
+    navigator.clipboard.writeText(getAbsoluteUrl(exploreEndpoints.mcp_server_url));
+    setIsMcpModalOpen(true);
+  };
+
+  if (!mountPath) {
     return <Navigate to="/" replace />;
   }
 
-  const url = new URL(hostUrl);
-  const hostDomain = url.origin;
-  const mountedPath = url.pathname;
   const showPasswordLogin = isManagedAuthProject(projectMetadata);
 
   return (
@@ -136,11 +141,11 @@ const LoginPage: React.FC = () => {
               <TooltipContent side="bottom" className="flex flex-col gap-4 p-3 min-w-[200px]">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Host Domain</span>
-                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded-sm">{hostDomain}</code>
+                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded-sm">{origin || '(relative)'}</code>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Mounted Path</span>
-                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded-sm">{mountedPath || '/'}</code>
+                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded-sm">{mountPath}</code>
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -150,8 +155,8 @@ const LoginPage: React.FC = () => {
                   onClick={() => {
                     appNavigate('/');
 
-                    // Avoid auto-connecting by setting the host URL to null
-                    setHostUrl(null);
+                    // Avoid auto-connecting by setting the connection to null
+                    setConnection(null, null);
                     setProjectMetadata(null);
                     setExploreEndpoints(null);
                   }}
@@ -266,7 +271,7 @@ const LoginPage: React.FC = () => {
               {providers && (
                 <div className="space-y-4">
                   {providers.map((provider) => {
-                    const loginUrl = new URL(provider.login_url);
+                    const loginUrl = new URL(getAbsoluteUrl(provider.login_url));
                     loginUrl.searchParams.append('redirect_url', getRedirectUrl());
                     
                     return (
@@ -277,7 +282,7 @@ const LoginPage: React.FC = () => {
                       >
                         {provider.icon && (
                           <img 
-                            src={new URL(provider.icon).toString()}
+                            src={getAbsoluteUrl(provider.icon)}
                             alt="" 
                             className="w-5 h-5 object-contain" 
                           />
@@ -327,7 +332,7 @@ const LoginPage: React.FC = () => {
                     </div>
                     <div className="border-t border-border bg-muted/20 px-4 py-2.5">
                       <p className="text-xs font-mono text-primary/80 break-all">
-                        {exploreEndpoints.api_versions["0"].documentation_routes.swagger_url}
+                        {getAbsoluteUrl(exploreEndpoints.api_versions["0"].documentation_routes.swagger_url)}
                       </p>
                     </div>
                   </a>
@@ -352,7 +357,7 @@ const LoginPage: React.FC = () => {
                     </div>
                     <div className="border-t border-border bg-muted/20 px-4 py-2.5">
                       <p className="text-xs font-mono text-primary/80 break-all">
-                        {exploreEndpoints.api_versions["0"].documentation_routes.redoc_url}
+                        {getAbsoluteUrl(exploreEndpoints.api_versions["0"].documentation_routes.redoc_url)}
                       </p>
                     </div>
                   </a>
@@ -374,7 +379,7 @@ const LoginPage: React.FC = () => {
                       <Copy className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-all shrink-0 ml-2" />
                     </div>
                     <div className="border-t border-border bg-muted/20 px-4 py-2.5">
-                      <p className="text-xs font-mono text-primary/80 break-all">{exploreEndpoints.mcp_server_url}</p>
+                      <p className="text-xs font-mono text-primary/80 break-all">{getAbsoluteUrl(exploreEndpoints.mcp_server_url)}</p>
                     </div>
                   </button>
                 </div>

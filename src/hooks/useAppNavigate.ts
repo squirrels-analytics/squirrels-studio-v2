@@ -4,25 +4,27 @@ import { useCallback } from 'react';
 
 export const useAppNavigate = () => {
   const navigate = useNavigate();
-  const { hostUrl, isHostUrlInQuery } = useApp();
+  const { origin, mountPath, isConnectionInQuery } = useApp();
 
   const appNavigate = useCallback((to: To, options?: NavigateOptions) => {
-    if (isHostUrlInQuery && hostUrl) {
+    if (isConnectionInQuery && mountPath) {
       if (typeof to === 'string') {
         const [path, search] = to.split('?');
         const params = new URLSearchParams(search);
-        params.set('hostUrl', hostUrl);
+        if (origin) params.set('origin', origin);
+        params.set('mountPath', mountPath);
         navigate(`${path}?${params.toString()}`, options);
       } else {
         const search = to.search || '';
         const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
-        params.set('hostUrl', hostUrl);
+        if (origin) params.set('origin', origin);
+        params.set('mountPath', mountPath);
         navigate({ ...to, search: `?${params.toString()}` }, options);
       }
     } else {
       navigate(to, options);
     }
-  }, [navigate, hostUrl, isHostUrlInQuery]);
+  }, [navigate, origin, mountPath, isConnectionInQuery]);
 
   return appNavigate;
 };

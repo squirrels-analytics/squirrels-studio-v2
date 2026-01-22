@@ -4,9 +4,10 @@ import type { UserInfo } from '@/types/auth-responses';
 import type { ExploreEndpointsResponse } from '@/types/explore-endpoints-response';
 
 export interface AppContextType {
-  hostUrl: string | null;
-  isHostUrlInQuery: boolean;
-  setHostUrl: (url: string | null) => void;
+  origin: string | null;
+  mountPath: string | null;
+  isConnectionInQuery: boolean;
+  setConnection: (origin: string | null, mountPath: string | null) => void;
   userProps: UserInfo | null;
   isGuest: boolean;
   sessionExpiry: number | null;

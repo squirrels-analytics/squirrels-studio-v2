@@ -5,6 +5,7 @@ interface BaseProjectMetadata {
   label: string;   // Ex. "My Project"
   description: string;
   elevated_access_level: "admin" | "member" | "guest";
+  origin?: string;
 }
 
 interface BaseApiRoutes {
@@ -70,28 +71,28 @@ export type ProjectMetadataResponse = ManagedAuthProjectMetadata | ExternalAuthP
   "auth_type": "optional",
   "elevated_access_level": "admin",
   "api_routes": {
-    "get_data_catalog_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/data-catalog",
-    "get_parameters_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/parameters",
-    "get_dataset_parameters_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/datasets/{dataset_name}/parameters",
-    "get_dataset_results_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/datasets/{dataset_name}",
-    "get_dashboard_parameters_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/dashboards/{dashboard_name}/parameters",
-    "get_dashboard_results_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/dashboards/{dashboard_name}",
-    "trigger_build_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/build",
-    "get_query_result_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/query-result",
-    "get_compiled_model_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/compiled-models/{model_name}",
-    "get_user_session_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/user-session",
-    "login_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/login",
-    "list_providers_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/providers",
-    "logout_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/logout",
-    "change_password_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/password",
-    "list_api_keys_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/api-keys",
-    "create_api_key_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/api-keys",
-    "revoke_api_key_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/api-keys/{key_id}",
-    "list_user_fields_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/user-management/user-fields",
-    "list_users_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/user-management/users",
-    "add_user_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/user-management/users",
-    "update_user_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/user-management/users/{username}",
-    "delete_user_url": "http://127.0.0.1:8000/analytics/expenses/v1/api/0/auth/user-management/users/{username}"
+    "get_data_catalog_url": "/analytics/expenses/v1/api/0/data-catalog",
+    "get_parameters_url": "/analytics/expenses/v1/api/0/parameters",
+    "get_dataset_parameters_url": "/analytics/expenses/v1/api/0/datasets/{dataset_name}/parameters",
+    "get_dataset_results_url": "/analytics/expenses/v1/api/0/datasets/{dataset_name}",
+    "get_dashboard_parameters_url": "/analytics/expenses/v1/api/0/dashboards/{dashboard_name}/parameters",
+    "get_dashboard_results_url": "/analytics/expenses/v1/api/0/dashboards/{dashboard_name}",
+    "trigger_build_url": "/analytics/expenses/v1/api/0/build",
+    "get_query_result_url": "/analytics/expenses/v1/api/0/query-result",
+    "get_compiled_model_url": "/analytics/expenses/v1/api/0/compiled-models/{model_name}",
+    "get_user_session_url": "/analytics/expenses/v1/api/0/auth/user-session",
+    "login_url": "/analytics/expenses/v1/api/0/auth/login",
+    "list_providers_url": "/analytics/expenses/v1/api/0/auth/providers",
+    "logout_url": "/analytics/expenses/v1/api/0/auth/logout",
+    "change_password_url": "/analytics/expenses/v1/api/0/auth/password",
+    "list_api_keys_url": "/analytics/expenses/v1/api/0/auth/api-keys",
+    "create_api_key_url": "/analytics/expenses/v1/api/0/auth/api-keys",
+    "revoke_api_key_url": "/analytics/expenses/v1/api/0/auth/api-keys/{key_id}",
+    "list_user_fields_url": "/analytics/expenses/v1/api/0/auth/user-management/user-fields",
+    "list_users_url": "/analytics/expenses/v1/api/0/auth/user-management/users",
+    "add_user_url": "/analytics/expenses/v1/api/0/auth/user-management/users",
+    "update_user_url": "/analytics/expenses/v1/api/0/auth/user-management/users/{username}",
+    "delete_user_url": "/analytics/expenses/v1/api/0/auth/user-management/users/{username}"
   }
 }
 */

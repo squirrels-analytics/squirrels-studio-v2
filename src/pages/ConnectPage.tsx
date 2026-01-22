@@ -11,54 +11,53 @@ import type { ProjectMetadataResponse } from '@/types/project-metadata-response'
 
 const ConnectPage: React.FC = () => {
   const navigate = useNavigate();
-  const { hostUrl, isHostUrlInQuery, setHostUrl, setIsLoading, setProjectMetadata, setExploreEndpoints } = useApp();
+  const { origin: contextOrigin, mountPath: contextMountPath, isConnectionInQuery, setConnection, setIsLoading, setProjectMetadata, setExploreEndpoints } = useApp();
 
-  const [hostDomain, setHostDomain] = useState("");
-  const [mountedPath, setMountedPath] = useState("");
+  const [origin, setOrigin] = useState(contextOrigin || "");
+  const [mountedPath, setMountedPath] = useState(contextMountPath || "");
   const [error, setError] = useState<string | null>(null);
   const [isManuallyConnecting, setIsManuallyConnecting] = useState(false);
 
-  // Auto-connect if hostUrl is already present (e.g., from URL params or DEFAULT_HOSTURL)
+  // Auto-connect if connection info is already present (e.g., from URL params or DEFAULT_ORIGIN/DEFAULT_MOUNTPATH)
   const { data: autoData } = useSWR<ProjectMetadataResponse>(
-    hostUrl ? hostUrl : null,
-    (url: string) => fetchProjectMetadata(url, setIsLoading, setProjectMetadata, setExploreEndpoints),
+    (contextMountPath && !isManuallyConnecting) ? [contextOrigin, contextMountPath] : null,
+    ([o, m]: [string | null, string]) => fetchProjectMetadata(o, m, setIsLoading, setProjectMetadata, setExploreEndpoints),
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false,
     }
   );
 
-  const { trigger } = useSWRMutation<ProjectMetadataResponse, Error, string, string>(
+  const { trigger } = useSWRMutation<ProjectMetadataResponse, Error, string, { origin: string; mountPath: string }>(
     'project-metadata',
-    async (_key, { arg: hostUrl }: { arg: string }) => fetchProjectMetadata(hostUrl, setIsLoading, setProjectMetadata, setExploreEndpoints)
+    async (_key, { arg }: { arg: { origin: string; mountPath: string } }) => 
+      fetchProjectMetadata(arg.origin, arg.mountPath, setIsLoading, setProjectMetadata, setExploreEndpoints)
   );
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    // Combine hostDomain and mountedPath into full URL
-    const trimmedHostDomain = hostDomain.trim().replace(/\/+$/, '');
-    const connectionHostUrl = `${trimmedHostDomain}${mountedPath.trim()}`;
 
-    let url: URL;
-    try {
-      url = new URL(connectionHostUrl);
-    } catch (error) {
-      console.error(error);
-      setError('Invalid URL. Please check your host domain and mounted path.');
+    const trimmedOrigin = origin.trim().replace(/\/+$/, '');
+    const trimmedMountPath = mountedPath.trim();
+
+    if (!trimmedMountPath) {
+      setError('Mounted path is required.');
       return;
     }
 
     try {
       setIsManuallyConnecting(true);
       // Query the project metadata using SWR mutation
-      const data = await trigger(url.toString());
+      const data = await trigger({ origin: trimmedOrigin, mountPath: trimmedMountPath });
       
       setProjectMetadata(data);
+      setConnection(trimmedOrigin, trimmedMountPath);
       
-      const finalHostUrl = url.toString();
-      setHostUrl(finalHostUrl);
-      navigate(`/login?hostUrl=${encodeURIComponent(finalHostUrl)}`);
+      const params = new URLSearchParams();
+      if (trimmedOrigin) params.set('origin', trimmedOrigin);
+      params.set('mountPath', trimmedMountPath);
+      navigate(`/login?${params.toString()}`);
     } catch (error) {
       setIsManuallyConnecting(false);
       console.error(error);
@@ -72,7 +71,10 @@ const ConnectPage: React.FC = () => {
   };
 
   if (autoData && !isManuallyConnecting) {
-    const to = isHostUrlInQuery ? `/login?hostUrl=${encodeURIComponent(hostUrl!)}` : '/login';
+    const params = new URLSearchParams();
+    if (contextOrigin) params.set('origin', contextOrigin);
+    if (contextMountPath) params.set('mountPath', contextMountPath);
+    const to = isConnectionInQuery ? `/login?${params.toString()}` : '/login';
     return <Navigate to={to} replace />;
   }
 
@@ -100,14 +102,14 @@ const ConnectPage: React.FC = () => {
 
           <div className="space-y-4">
             <div>
-              <label htmlFor="hostDomain" className="block text-sm font-medium text-foreground mb-1">
-                Host Domain
+              <label htmlFor="origin" className="block text-sm font-medium text-foreground mb-1">
+                Origin
               </label>
               <input
-                id="hostDomain"
+                id="origin"
                 type="text"
-                value={hostDomain}
-                onChange={(e) => setHostDomain(e.target.value)}
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
                 className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-foreground"
                 placeholder="e.g. http://localhost:8000"
                 required

@@ -46,8 +46,9 @@ import type { ExplorerOptionType } from '@/types/core';
 const ExplorerPage: FC = () => {
   const appNavigate = useAppNavigate();
   const { 
-    hostUrl, 
-    isHostUrlInQuery,
+    origin,
+    mountPath,
+    isConnectionInQuery,
     projectMetadata, 
     userProps, 
     isGuest,
@@ -297,7 +298,7 @@ const ExplorerPage: FC = () => {
     }
   };
 
-  if (!hostUrl) {
+  if (!mountPath) {
     return <Navigate to="/" replace />;
   }
 
@@ -310,7 +311,10 @@ const ExplorerPage: FC = () => {
 
   // Auth required but no session (e.g. expired / unauthorized): send the user back to login.
   if (isAuthRequired && !userProps && isGuest && !isSessionExpiredModalOpen) {
-    const to = isHostUrlInQuery ? `/login?hostUrl=${encodeURIComponent(hostUrl!)}` : '/login';
+    const params = new URLSearchParams();
+    if (origin) params.set('origin', origin);
+    params.set('mountPath', mountPath);
+    const to = isConnectionInQuery ? `/login?${params.toString()}` : '/login';
     return <Navigate to={to} replace />;
   }
 

@@ -55,6 +55,13 @@ function buildConfigHeaders(configurables?: ConfigurableValues): Record<string, 
   return headers;
 }
 
+export function prefixOrigin(origin: string | null, path: string): string {
+  if (!origin) return path;
+  const normalizedOrigin = origin.replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedOrigin}${normalizedPath}`;
+}
+
 export async function logout(logoutUrl: string): Promise<void> {
   await fetchWithCredentials(logoutUrl, { method: 'POST' });
 }
@@ -77,22 +84,50 @@ export async function fetchUserSession(userSessionUrl: string): Promise<UserSess
   return fetchJson<UserSessionResponse>(userSessionUrl);
 }
 
-export async function fetchExploreEndpoints(hostUrl: string): Promise<ExploreEndpointsResponse> {
-  return fetchJson<ExploreEndpointsResponse>(hostUrl + "/");
+export async function fetchExploreEndpoints(origin: string | null, mountPath: string): Promise<ExploreEndpointsResponse> {
+  const normalizedMountPath = mountPath.startsWith('/') ? mountPath : `/${mountPath}`;
+  const base = prefixOrigin(origin, normalizedMountPath);
+  const endpoints = await fetchJson<ExploreEndpointsResponse>(base + "/");
+  
+  // Normalize origin-less URLs
+  endpoints.health_url = prefixOrigin(origin, endpoints.health_url);
+  endpoints.mcp_server_url = prefixOrigin(origin, endpoints.mcp_server_url);
+  endpoints.studio_url = prefixOrigin(origin, endpoints.studio_url);
+  endpoints.documentation_routes.swagger_url = prefixOrigin(origin, endpoints.documentation_routes.swagger_url);
+  endpoints.documentation_routes.redoc_url = prefixOrigin(origin, endpoints.documentation_routes.redoc_url);
+  endpoints.documentation_routes.openapi_url = prefixOrigin(origin, endpoints.documentation_routes.openapi_url);
+  
+  Object.keys(endpoints.api_versions).forEach(version => {
+    const v = endpoints.api_versions[version];
+    v.project_metadata_url = prefixOrigin(origin, v.project_metadata_url);
+    v.documentation_routes.swagger_url = prefixOrigin(origin, v.documentation_routes.swagger_url);
+    v.documentation_routes.redoc_url = prefixOrigin(origin, v.documentation_routes.redoc_url);
+    v.documentation_routes.openapi_url = prefixOrigin(origin, v.documentation_routes.openapi_url);
+  });
+  
+  return endpoints;
 }
 
 export async function fetchProjectMetadata(
-  hostUrl: string,
+  origin: string | null,
+  mountPath: string,
   setIsLoading: (loading: boolean) => void,
   setProjectMetadata: (metadata: ProjectMetadataResponse) => void,
   setExploreEndpoints: (endpoints: ExploreEndpointsResponse) => void
 ): Promise<ProjectMetadataResponse> {
   setIsLoading(true);
   try {
-    const endpoints = await fetchExploreEndpoints(hostUrl);
+    const endpoints = await fetchExploreEndpoints(origin, mountPath);
     setExploreEndpoints(endpoints);
     const projectMetadataUrl = endpoints.api_versions["0"].project_metadata_url;
     const data = await fetchJson<ProjectMetadataResponse>(projectMetadataUrl);
+    
+    // Normalize all api_routes
+    Object.keys(data.api_routes).forEach(key => {
+      const routeKey = key as keyof typeof data.api_routes;
+      data.api_routes[routeKey] = prefixOrigin(origin, data.api_routes[routeKey]);
+    });
+    
     setProjectMetadata(data);
     return data;
   } finally {

@@ -10,15 +10,15 @@ interface ProjectInitializerProps {
 }
 
 export const ProjectInitializer: React.FC<ProjectInitializerProps> = ({ children }) => {
-  const { hostUrl, projectMetadata, setProjectMetadata, setIsLoading, setExploreEndpoints } = useApp();
+  const { origin, mountPath, projectMetadata, setProjectMetadata, setIsLoading, setExploreEndpoints } = useApp();
   const location = useLocation();
 
   const isOnConnectPage = location.pathname === '/';
-  const shouldFetch = hostUrl && !isOnConnectPage && !projectMetadata;
+  const shouldFetch = mountPath && !isOnConnectPage && !projectMetadata;
 
   const { data, error } = useSWR<ProjectMetadataResponse>(
-    shouldFetch ? hostUrl : null,
-    (url: string) => fetchProjectMetadata(url, setIsLoading, setProjectMetadata, setExploreEndpoints),
+    shouldFetch ? [origin, mountPath] : null,
+    ([origin, mountPath]: [string | null, string]) => fetchProjectMetadata(origin, mountPath, setIsLoading, setProjectMetadata, setExploreEndpoints),
     {
       revalidateOnFocus: false,
       shouldRetryOnError: false,
@@ -27,7 +27,7 @@ export const ProjectInitializer: React.FC<ProjectInitializerProps> = ({ children
 
   // Redirection logic: if we're not on the connect page and something is wrong
   if (!isOnConnectPage) {
-    if (!hostUrl || error) {
+    if (!mountPath || error) {
       if (error) console.error('Initialization error:', error);
       return <Navigate to="/" replace />;
     }
